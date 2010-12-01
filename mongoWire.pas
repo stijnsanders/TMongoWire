@@ -28,7 +28,7 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    procedure Open(ServerName:string;Port:integer=27017);
+    procedure Open(ServerName:string='localhost';Port:integer=27017);
     procedure Close;
 
     function Get(
