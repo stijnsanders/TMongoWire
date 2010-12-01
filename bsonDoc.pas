@@ -47,6 +47,7 @@ type
     ['{42534F4E-0000-0001-C000-000000000001}']
     function Get_Item(const Key: WideString): OleVariant; safecall;
     procedure Set_Item(const Key: WideString; Value: OleVariant); safecall;
+    function ToVarArray:OleVariant; safecall;
     procedure Clear; safecall;
     property Item[const Key: WideString]: OleVariant read Get_Item write Set_Item; default;
   end;
@@ -74,9 +75,9 @@ type
     destructor Destroy; override;
     function Load(const stm: IStream): HResult; stdcall;
     function Save(const stm: IStream; fClearDirty: BOOL): HResult; stdcall;
+    function ToVarArray:OleVariant; safecall;
     procedure Clear; safecall;
     //TODO: function toJSON:WideString;
-    function toVarArray:OleVariant;
     property Item[const Key: WideString]: OleVariant read Get_Item write Set_Item; default;
   end;
 
@@ -892,7 +893,7 @@ begin
   FLastIndex:=0;
 end;
 
-function TBSONDocument.toVarArray: OleVariant;
+function TBSONDocument.ToVarArray: OleVariant;
 var
   i:integer;
 begin

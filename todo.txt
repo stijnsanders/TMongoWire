@@ -6,7 +6,7 @@ database commands
 hint, explain, count, $where
 database profiling: set/get profiling level, get profiling info
 advanced connection management (replica pairs, slave okay)
-automatic reconnection
+automatic reconnection (pair mode?)
 tailable cursor support
 
 === BSON document ===

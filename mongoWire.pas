@@ -325,6 +325,7 @@ function TMongoWire.Get(Collection: WideString; QryObj,
   ReturnFieldSelector: IBSONDocument): IBSONDocument;
 var
   i:integer;
+  p:PMongoWireMsgHeader;
 begin
   FWriteLock.Enter;
   try
@@ -337,18 +338,22 @@ begin
     if ReturnFieldSelector<>nil then (ReturnFieldSelector as IPersistStream).Save(FData,false);
     ReadMsg(CloseMsg(FData));
 
-    i:=PMongoWireMsgHeader((FData.Stream as TMemoryStream).Memory)^.Flags;
-    if (i and $0001)<>0 then raise EMongoQueryError.Create('MongoWire.Query: cursor not found');
+    p:=(FData.Stream as TMemoryStream).Memory;
+    if (p.Flags and $0001)<>0 then
+      raise EMongoQueryError.Create('MongoWire.Get: cursor not found');
+
+    //CursorID//assert 0
+    //StartingFrom//assert 0
+    if p.NumberReturned=0 then
+      raise EMongoQueryError.Create('MongoWire.Get: no documents returned');
+      //Result:=nil?
 
     Result:=TBSONDocument.Create;
     (Result as IPersistStream).Load(FData);
 
-    if (i and $0002)<>0 then
-      raise EMongoQueryError.Create('MongoWire.Query: '+VarToStr(Result.Item['$err']));
+    if (p.Flags and $0002)<>0 then
+      raise EMongoQueryError.Create('MongoWire.Get: '+VarToStr(Result.Item['$err']));
 
-    //CursorID//assert 0
-    //StartingFrom//assert 0
-    //NumberReturned//assert 1
   finally
     FWriteLock.Leave;
   end;
