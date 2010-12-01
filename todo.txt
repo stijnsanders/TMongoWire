@@ -1,0 +1,22 @@
+=== MongoWire ===
+
+authentication
+
+=== BSON document ===
+
+to/from JSON
+
+lazy parse: keep binary data, only parse when accessed
+
+idea: IBSONDocument pool, pool on free, create from pool
+
+idea: (central) index of key names, use FElements[].KeyIndex
+
+jsonJavascript types as IActiveScript things?
+
+GetSizeMax
+support varByRef?
+
+store bson element type and use when saving
+
+varStrArg for GUIDs?
