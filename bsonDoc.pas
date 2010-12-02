@@ -83,6 +83,21 @@ type
 
   EBSONException=class(Exception);
 
+{
+  BSON document builder
+  pass an array of key/value-pairs,
+  use value '[' to start an embedded document,
+  and key ']' to close it.
+  example:
+    MongoWireQuery1.Query('mydb1.orders',BSON([
+      'confirmed',false,
+      '$orderby','[',
+        'created',-1,
+      ']'
+    ]);
+}
+function BSON(x:array of OleVariant):IBSONDocument;
+
 implementation
 
 uses
@@ -903,6 +918,54 @@ begin
     Result[i,0]:=FElements[i].Key;
     Result[i,1]:=FElements[i].Value;
    end;
+end;
+
+function BSON(x:array of OleVariant):IBSONDocument;
+var
+  i,di,l:integer;
+  d:array of IBSONDocument;
+  key:WideString;
+const
+  GrowStep=8;
+begin
+  i:=0;
+  l:=Length(x);
+  di:=0;
+  SetLength(d,8);
+  d[di]:=TBSONDocument.Create as IBSONDocument;
+  while i<l do
+   begin
+    //key
+    key:=VarToStr(x[i]);
+    if key=']' then
+     begin
+      //pop from stack
+      d[di]:=nil;
+      dec(di);
+     end
+    else
+     begin
+      if key='[' then raise Exception.Create('BSON builder: embedded document needs key at index '+IntToStr(i)); 
+      //value
+      inc(i);
+      if (VarType(x[i])=varOleStr) and (x[i]='[') then
+       begin
+        //push on stack
+        inc(di);
+        if di=Length(d) then SetLength(d,di+GrowStep);
+        d[di]:=TBSONDocument.Create as IBSONDocument;
+        d[di-1].Item[key]:=d[di];
+       end
+      else
+        if i<l then
+          d[di].Item[key]:=x[i]
+        else
+          raise Exception.Create('BSON builder: last key is missing value');
+     end;
+    inc(i);
+   end;
+  //if di>0 then raise Exception.Create('BSON builder: '+IntToStr(di)+' closing brackets missing');?
+  Result:=d[0];
 end;
 
 end.
