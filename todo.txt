@@ -1,5 +1,7 @@
 === MongoWire ===
 
+async: StartQuery CheckResponse ReadResponse
+
 authentication
 
 database commands

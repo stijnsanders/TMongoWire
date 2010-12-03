@@ -286,11 +286,27 @@ var
       end;
   end;
   {$ENDIF}
+  function stmReadBSONDocument:IBSONDocument;
+  var
+    p1,p2:int64;
+    d:TBSONDocument;
+  begin
+    OleCheck(stm.Seek(0,soFromCurrent,p1));
+    d:=TBSONDocument.Create;
+    try
+      d.Load(stm);
+      Result:=(d as IBSONDocument);
+    except
+      d.Free;
+      raise;
+    end;
+    OleCheck(stm.Seek(0,soFromCurrent,p2));
+    inc(ltotal,p2-p1);
+  end;
 var
   j:integer;
   v:OleVariant;
   k:WideString;
-  d:TBSONDocument;
   o:array[0..11] of byte;
   ii:int64 absolute o;
   dd:double absolute o;
@@ -358,16 +374,7 @@ begin
         bsonString:
           v:=stmReadString;
         bsonEmbeddedDocument:
-         begin
-          d:=TBSONDocument.Create;
-          try
-            d.Load(stm);
-            v:=(d as IBSONDocument);
-          except
-            d.Free;
-            raise;
-          end;
-         end;
+          v:=stmReadBSONDocument;
         bsonArray:
          begin
           //push onto array stack
