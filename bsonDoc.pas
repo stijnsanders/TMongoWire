@@ -41,6 +41,9 @@ const
 
   //special prefix with unassigned(?) unicode symbols from the Special range
   bsonJavaScriptCodePrefix:WideString=#$FFF1'bsonJavaScriptCode'#$FFF2;
+  bsonRegExPrefix:WideString=#$FFF1'bsonRegEx'#$FFF2;
+  bsonObjectIDPrefix:WideString='ObjectID("';
+  bsonObjectIDSuffix:WideString='")';
 
 type
   IBSONDocument = interface(IUnknown)
@@ -428,7 +431,7 @@ begin
         bsonObjectID:
          begin
           stmRead(@o[0],12);
-          v:='id{'+
+          v:=bsonObjectIDPrefix+
             hex[o[00] shr 4]+hex[o[00] and $F]+
             hex[o[01] shr 4]+hex[o[01] and $F]+
             hex[o[02] shr 4]+hex[o[02] and $F]+
@@ -441,7 +444,7 @@ begin
             hex[o[09] shr 4]+hex[o[09] and $F]+
             hex[o[10] shr 4]+hex[o[10] and $F]+
             hex[o[11] shr 4]+hex[o[11] and $F]+
-            '}';
+            bsonObjectIDSuffix;
          end;
         bsonBoolean:
          begin
@@ -459,7 +462,7 @@ begin
           {$IFDEF BSON_SUPPORT_REGEX}
           v:=stmReadRegEx;
           {$ELSE}
-          raise EInvalidOperation.Create('BSON: regular expressions not supported');
+          v:=bsonRegExPrefix+'/'+stmReadCString+'/'+stmReadCString;
           {$ENDIF}
         bsonJavaScriptCode:
           v:=bsonJavaScriptCodePrefix+stmReadString;//TODO: find active script interface?
@@ -805,16 +808,17 @@ begin
            end
           else
           //detect objectID
-          if (Length(w)=28) and (w[1]='i') and (w[2]='d') and (w[3]='{') and (w[28]='}') then //and the other are hex digits?
+		      if (Length(w)=Length(bsonObjectIDPrefix)+24+Length(bsonObjectIDSuffix)) then //and the other are hex digits?
            begin
             i:=bsonObjectID;
             stmWrite(@i,1);
             stmWriteCString(key);
+			      j:=Length(bsonObjectIDPrefix)+1;
             for i:=0 to 11 do
              begin
-              bb:=byte(AnsiChar(w[i*2+4]));
+              bb:=byte(AnsiChar(w[j+i*2]));
               if (bb and $F0)=$30 then o[i]:=bb and $F else o[i]:=(9+bb) and $F;
-              bb:=byte(AnsiChar(w[i*2+5]));
+              bb:=byte(AnsiChar(w[j+i*2+1]));
               if (bb and $F0)=$30 then inc(o[i],bb shl 4) else inc(o[i],(9+bb) shl 4);
              end;
             stmWrite(@o[0],12);
@@ -827,6 +831,20 @@ begin
             stmWrite(@i,1);
             stmWriteCString(key);
             stmWriteString(Copy(w,Length(bsonJavaScriptCodePrefix)+1,Length(w)-Length(bsonJavaScriptCodePrefix)));
+           end
+          else
+          //detect regex
+          if (Copy(w,1,Length(bsonRegExPrefix))=bsonRegExPrefix) then
+           begin
+            i:=bsonRegEx;
+            stmWrite(@i,1);
+            stmWriteCString(key);
+            i:=Length(bsonRegExPrefix)+1;
+            if (i<=Length(w)) and (w[i]='/') then inc(i);//TODO: support alternate regex delimiter?
+            j:=i;
+            while (j<=Length(w)) and (w[i]<>'/') do inc(j);
+            stmWriteCString(Copy(w,i,j-i));
+            stmWriteCString(Copy(w,j+1,Length(w)-j));
            end
           else
            begin
