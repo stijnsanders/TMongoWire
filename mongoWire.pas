@@ -41,7 +41,7 @@ type
       Collection:WideString;
       Selector,Doc:IBSONDocument;
       Upsert:boolean=false;
-      MultiUpdate:boolean=true
+      MultiUpdate:boolean=false
     );
     procedure Insert(
       Collection:WideString;
@@ -334,7 +334,15 @@ begin
     FData.Stream.Write(i,4);//NumberToSkip
     i:=1;//-1;
     FData.Stream.Write(i,4);//NumberToReturn
-    (QryObj as IPersistStream).Save(FData,false);
+    if QryObj=nil then
+     begin
+      i:=5;//empty document
+      FData.Stream.Write(i,4);
+      i:=0;//terminator
+      FData.Stream.Write(i,1);
+     end
+    else
+      (QryObj as IPersistStream).Save(FData,false);
     if ReturnFieldSelector<>nil then (ReturnFieldSelector as IPersistStream).Save(FData,false);
     ReadMsg(CloseMsg(FData));
 
@@ -364,6 +372,7 @@ procedure TMongoWire.Update(Collection: WideString; Selector,
 var
   i:integer;
 begin
+  if Doc=nil then raise EMongoException.Create('MongoWire.Update: Doc required');
   FWriteLock.Enter;
   try
     OpenMsg(OP_UPDATE,0,Collection);
@@ -371,7 +380,15 @@ begin
     if Upsert then inc(i,$0001);
     if MultiUpdate then inc(i,$0002);
     FData.Stream.Write(i,4);
-    (Selector as IPersistStream).Save(FData,false);
+    if Selector=nil then
+     begin
+      i:=5;//empty document
+      FData.Stream.Write(i,4);
+      i:=0;//terminator
+      FData.Stream.Write(i,1);
+     end
+    else
+      (Selector as IPersistStream).Save(FData,false);
     (Doc as IPersistStream).Save(FData,false);
     CloseMsg;
   finally
@@ -381,6 +398,7 @@ end;
 
 procedure TMongoWire.Insert(Collection: WideString; Doc: IBSONDocument);
 begin
+  if Doc=nil then raise EMongoException.Create('MongoWire.Insert: Doc required');
   FWriteLock.Enter;
   try
     OpenMsg(OP_INSERT,0,Collection);
@@ -432,7 +450,16 @@ begin
     i:=0;
     if SingleRemove then inc(i,$0001);
     FData.Stream.Write(i,4);
-    (Selector as IPersistStream).Save(FData,false);
+    if Selector=nil then
+     begin
+      //raise? warning?
+      i:=5;//empty document
+      FData.Stream.Write(i,4);
+      i:=0;//terminator
+      FData.Stream.Write(i,1);
+     end
+    else
+      (Selector as IPersistStream).Save(FData,false);
     CloseMsg;
   finally
     FWriteLock.Leave;
@@ -497,8 +524,17 @@ begin
     FOwner.OpenMsg(OP_QUERY,Flags,Collection);
     FOwner.FData.Stream.Write(FNumberToSkip,4);
     FOwner.FData.Stream.Write(FNumberToReturn,4);
-    (QryObj as IPersistStream).Save(FOwner.FData,false);
-    if ReturnFieldSelector<>nil then (ReturnFieldSelector as IPersistStream).Save(FOwner.FData,false);
+    if QryObj=nil then
+     begin
+      i:=5;//empty document
+      FOwner.FData.Stream.Write(i,4);
+      i:=0;//terminator
+      FOwner.FData.Stream.Write(i,1);
+     end
+    else
+      (QryObj as IPersistStream).Save(FOwner.FData,false);
+    if ReturnFieldSelector<>nil then
+      (ReturnFieldSelector as IPersistStream).Save(FOwner.FData,false);
     i:=FOwner.CloseMsg(FData);//queue self's data
   finally
     FOwner.FReadLock.Leave;
@@ -511,6 +547,7 @@ function TMongoWireQuery.Next(Doc: IBSONDocument): boolean;
 var
   i:integer;
 begin
+  if Doc=nil then EMongoException.Create('MongoWireQuery.Next: Doc required');
   if FPageIndex=FNumberReturned then
    begin
     if FCursorID=0 then

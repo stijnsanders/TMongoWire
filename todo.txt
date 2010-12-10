@@ -1,5 +1,7 @@
 === MongoWire ===
 
+update/insert: "$cmd"{getlasterror:true}
+
 async: StartQuery CheckResponse ReadResponse
 
 authentication
