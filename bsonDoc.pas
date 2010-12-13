@@ -99,7 +99,8 @@ type
       ']'
     ]);
 }
-function BSON(x:array of OleVariant):IBSONDocument;
+function BSON:IBSONDocument; overload;
+function BSON(x:array of OleVariant):IBSONDocument; overload;
 
 implementation
 
@@ -945,7 +946,12 @@ begin
    end;
 end;
 
-function BSON(x:array of OleVariant):IBSONDocument;
+function BSON:IBSONDocument; //overload;
+begin
+  Result:=TBSONDocument.Create as IBSONDocument;
+end;
+
+function BSON(x:array of OleVariant):IBSONDocument; //overload;
 var
   i,di,l:integer;
   d:array of IBSONDocument;
