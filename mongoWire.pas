@@ -177,7 +177,10 @@ var
 begin
   s:=UTF8Encode(x);
   l:=Length(s);
-  FData.Stream.Write(s[1],l+1);
+  if l=0 then
+    FData.Stream.Write(l,1)
+  else
+    FData.Stream.Write(s[1],l+1);
 end;
 
 procedure TMongoWire.OpenMsg(OpCode,Flags:integer;Collection:WideString);

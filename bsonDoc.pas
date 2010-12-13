@@ -542,7 +542,10 @@ var
     sx:=UTF8Encode(s);
     sl:=Length(sx);
     //sx:=sx+#0;
-    stmWrite(@sx[1],sl+1);
+    if sl=0 then
+      stmWrite(@sl,1)
+    else
+      stmWrite(@sx[1],sl+1);
   end;
   procedure stmWriteString(s:WideString);
   var
@@ -554,7 +557,13 @@ var
     inc(sl);
     stmWrite(@sl,4);
     //sx:=sx+#0;
-    stmWrite(@sx[1],sl);
+    if sl=1 then
+     begin
+      sl:=0;
+      stmWrite(@sl,0);
+     end
+    else
+      stmWrite(@sx[1],sl);
   end;
 var
   uu:IUnknown;
