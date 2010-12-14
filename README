@@ -17,3 +17,6 @@ mongoWire.pas
 
   TMongoWireQuery=class(TBSONDocumentsEnumerator)
     A query to a mongoDB server, handles the cursor and subsequent requests to the server to get more data when needed.
+	
+http://yoy.be/TMongoWire
+https://github.com/stijnsanders/TMongoWire
