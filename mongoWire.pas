@@ -586,7 +586,7 @@ end;
 procedure TMongoWireQuery.ReadResponse(RequestID:integer);
 var
   i:integer;
-  b:TBSONDocument;
+  d:IBSONDocument;
   p:PMongoWireMsgHeader;
 begin
   FOwner.ReadMsg(RequestID);
@@ -601,13 +601,9 @@ begin
    begin
     //FCursorID:=0;//?
     FNumberReturned:=0;
-    b:=TBSONDocument.Create;
-    try
-      (b as IPersistStream).Load(FData);
-      raise EMongoQueryError.Create('MongoWire.Query: '+VarToStr(b.Item['$err']));
-    finally
-      b.Free;
-    end;
+    d:=TBSONDocument.Create as IBSONDocument;
+    (d as IPersistStream).Load(FData);
+    raise EMongoQueryError.Create('MongoWire.Query: '+VarToStr(d['$err']));
    end;
 end;
 
