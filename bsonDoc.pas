@@ -260,8 +260,11 @@ var
     s:AnsiString;
   begin
     stmRead(@l,4);
-    SetLength(s,l-1);
-    stmRead(@s[1],l-1);
+    if l=1 then s:='' else
+     begin
+      SetLength(s,l-1);
+      stmRead(@s[1],l-1);
+     end;
     //read closing null
     l:=0;
     stmRead(@l,1);
@@ -300,7 +303,7 @@ var
     try
       d.Load(stm);
       Result:=(d as IBSONDocument);
-    except
+    except //not finally!
       d.Free;
       raise;
     end;
@@ -560,7 +563,7 @@ var
     if sl=1 then
      begin
       sl:=0;
-      stmWrite(@sl,0);
+      stmWrite(@sl,1);
      end
     else
       stmWrite(@sx[1],sl);
