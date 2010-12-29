@@ -25,6 +25,10 @@ tailable cursor support
 
 to/from JSON
 
+to/from XML (IXMLDOMNode)
+
+BSON editor application (to/from file,clipboard...)
+
 lazy parse: keep binary data, only parse when accessed
 
 idea: IBSONDocument pool, pool on free, create from pool
