@@ -2,14 +2,14 @@ Delphi MongoDB Driver
 ---------------------
 
 A Delphi driver to access a mongoDB server.
-It maps variables onto Delphi variables of type OleVariant, which resembles the loose typing of JavaScript a lot.
-There are two main units and three main object to enable access to a mongo DB server:
+It maps variables onto Delphi variables of type OleVariant, which resembles the loose typing of JavaScript.
+There are two main units and three main classes to enable access to a mongo DB server:
 
 bsonDoc.pas
   TBSONDocument = class(TInterfacedObject, IBSONDocument, IPersistStream)
-    Holds the data of a 'document', the basic unit mongoDB works with.
-    Implements an IBSONDocument interface which allows it to be referenced by an OeVariant variable, and this embedded documents.
-    Implements the IPersistStream to enable loading from and saving to BSON, the internal binary storage specification used by mongoDB.
+    Holds the data of a 'document', the basic unit of data mongoDB works with.
+    Implements an IBSONDocument interface which allows it to be referenced by an OleVariant variable, which enables embedding documents.
+    Implements the IPersistStream interface to enable loading from and saving to BSON, the internal binary storage specification used by mongoDB.
 
 mongoWire.pas
   TMongoWire=class(TObject)
