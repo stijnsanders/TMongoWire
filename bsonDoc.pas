@@ -61,11 +61,11 @@ type
   TBSONDocument = class(TInterfacedObject, IBSONDocument, IPersistStream)
   private
     FDirty:boolean;
-    FElements:array of record
+    FElementIndex,FElementSize,FLastIndex:integer;
+    FElements:array of packed record
       Key:WideString;
       Value:OleVariant;
     end;
-    FElementIndex,FElementSize,FLastIndex:integer;
     procedure GetIndex(Key: WideString;var Index:integer; var Match:boolean);
   protected
     function Get_Item(const Key: WideString): OleVariant; safecall;
@@ -830,9 +830,9 @@ begin
             for i:=0 to 11 do
              begin
               bb:=byte(AnsiChar(w[j+i*2]));
-              if (bb and $F0)=$30 then o[i]:=bb and $F else o[i]:=(9+bb) and $F;
+              if (bb and $F0)=$30 then o[i]:=bb shl 4 else o[i]:=(9+bb) shl 4;
               bb:=byte(AnsiChar(w[j+i*2+1]));
-              if (bb and $F0)=$30 then inc(o[i],bb shl 4) else inc(o[i],(9+bb) shl 4);
+              if (bb and $F0)=$30 then inc(o[i],bb and $F) else inc(o[i],(9+bb) and $F);
              end;
             stmWrite(@o[0],12);
            end
