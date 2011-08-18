@@ -91,11 +91,11 @@ ImageBase=4194304
 ExeDescription=
 [Directories]
 OutputDir=
-UnitOutputDir=
+UnitOutputDir=dcu
 PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=
-Packages=
+Packages=vcl;rtl;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;vclx;dbrtl;soaprtl;dsnap;VclSmp;dbexpress;vcldb;dbxcds;adortl;ibxpress;vclactnband;bdertl;vclshlctrls;dclOfficeXP;Indy70;RoComponents;SQLiteCtrls
 Conditionals=
 DebugSourceDirs=
 UsePackages=0
@@ -142,8 +142,8 @@ Item3=C:\Program Files\Indy9
 Item4=..\..\public
 [HistoryLists\hlUnitOutputDirectory]
 Count=2
-Item0=..\dcu
-Item1=dcu
+Item0=dcu
+Item1=..\dcu
 [HistoryLists\hlOutputDirectorry]
 Count=5
 Item0=setup\xxmGeckoDev\platform\WINNT\components
