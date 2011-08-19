@@ -13,12 +13,14 @@ var
 
 function mongoObjectId:string;
 var
+  st:TSystemTime;
   a,b,c,d:integer;
 const
   hex:array[0..15] of char='0123456789abcdef';
 begin
   //juse one way of generating mongoDB objectID's
-  a:=Round((Now-UnixDateDelta)*SecsPerDay);
+  GetSystemTime(st);
+  a:=(((Round(EncodeDate(st.wYear,st.wMonth,st.wDay))-UnixDateDelta)*24+st.wHour)*60+st.wMinute)*60+st.wSecond;
   b:=mongoObjectID_MachineID; //see initialization
   c:=GetCurrentThreadId;//GetCurrentProcessId;
   d:=InterlockedIncrement(mongoObjectID_Counter);
