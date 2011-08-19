@@ -62,11 +62,12 @@ type
   private
     FDirty:boolean;
     FElementIndex,FElementSize,FLastIndex:integer;
-    FElements:array of packed record
+    FKeys:array of record
       Key:WideString;
-      Value:OleVariant;
+      ValueIndex:integer;
     end;
-    procedure GetIndex(Key: WideString;var Index:integer; var Match:boolean);
+    FValues:array of OleVariant;
+    procedure GetKeyIndex(Key: WideString;var Index:integer; var Match:boolean);
   protected
     function Get_Item(const Key: WideString): OleVariant; safecall;
     procedure Set_Item(const Key: WideString; Value: OleVariant); safecall;
@@ -128,7 +129,7 @@ destructor TBSONDocument.Destroy;
 var
   i:integer;
 begin
-  for i:=0 to FElementIndex-1 do VarClear(FElements[i].Value);
+  for i:=0 to FElementIndex-1 do VarClear(FValues[i]);
   inherited;
 end;
 
@@ -138,14 +139,14 @@ begin
   raise EInvalidOperation.Create('Not implemented');
 end;
 
-procedure TBSONDocument.GetIndex(Key: WideString; var Index: integer;
+procedure TBSONDocument.GetKeyIndex(Key: WideString; var Index: integer;
   var Match: boolean);
 var
   a,b,c,x:integer;
 begin
   //case sensitivity?
   //check last getindex, speeds up set right after get
-  if (FElementIndex<>0) and (CompareStr(Key,FElements[FLastIndex].Key)=0) then
+  if (FElementIndex<>0) and (CompareStr(Key,FKeys[FLastIndex].Key)=0) then
    begin
     Index:=FLastIndex;
     Match:=true;
@@ -159,7 +160,7 @@ begin
      begin
       c:=(a+b) div 2;
       //if c=a? c=b?
-      x:=CompareStr(Key,FElements[c].Key);
+      x:=CompareStr(Key,FKeys[c].Key);
       if x=0 then
        begin
         a:=c;
@@ -182,34 +183,33 @@ var
   x:integer;
   m:boolean;
 begin
-  GetIndex(Key,x,m);
-  if m and not(VarIsEmpty(FElements[x].Value)) then Result:=FElements[x].Value else Result:=Null;
+  GetKeyIndex(Key,x,m);
+  if m then x:=FKeys[x].ValueIndex;
+  if m and not(VarIsEmpty(FValues[x])) then Result:=FValues[x] else Result:=Null;
 end;
 
 procedure TBSONDocument.Set_Item(const Key: WideString; Value: OleVariant);
 var
-  x:integer;
+  x,i:integer;
   m:boolean;
-  v:OleVariant;
 const
   GrowStep=$20;//not too much, not too little (?)
 begin
-  GetIndex(Key,x,m);
+  GetKeyIndex(Key,x,m);
   if not(m) then
    begin
     if FElementIndex=FElementSize then
      begin
       inc(FElementSize,GrowStep);
-      SetLength(FElements,FElementSize);
+      SetLength(FKeys,FElementSize);
+      SetLength(FValues,FElementSize);
      end;
-    Move(FElements[x],FElements[x+1],(SizeOf(WideString)+SizeOf(OleVariant))*(FElementIndex-x));
-    pointer(FElements[x].Key):=nil;
-    v:=Null;
-    Move(v,FElements[x].Value,SizeOf(OleVariant));
+    for i:=FElementIndex-1 downto x do FKeys[i+1]:=FKeys[i];
+    FKeys[x].Key:=Key;
+    FKeys[x].ValueIndex:=FElementIndex;
     inc(FElementIndex);
-    FElements[x].Key:=Key;
    end;
-  FElements[x].Value:=Value;
+  FValues[FKeys[x].ValueIndex]:=Value;
   //TODO: if VarType(Value)=varEmpty then drop element
   FDirty:=true;
 end;
@@ -705,8 +705,8 @@ begin
    begin
     if vindex=-1 then
      begin
-      key:=FElements[xi].Key;
-      v:=FElements[xi].Value;
+      key:=FKeys[xi].Key;
+      v:=FValues[FKeys[xi].ValueIndex];
       inc(xi);
      end
     else
@@ -940,7 +940,7 @@ var
   i:integer;
 begin
   FDirty:=false;//?
-  for i:=0 to FElementIndex-1 do VarClear(FElements[i].Value);//?
+  for i:=0 to FElementIndex-1 do VarClear(FValues[i]);
   //TODO: if IBSONDocument then Clear?
   FElementIndex:=0;//?
   FLastIndex:=0;
@@ -953,8 +953,8 @@ begin
   Result:=VarArrayCreate([0,FElementIndex-1,0,1],varVariant);
   for i:=0 to FElementIndex-1 do
    begin
-    Result[i,0]:=FElements[i].Key;
-    Result[i,1]:=FElements[i].Value;
+    Result[i,0]:=FKeys[i].Key;
+    Result[i,1]:=FValues[FKeys[i].ValueIndex];
    end;
 end;
 
