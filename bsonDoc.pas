@@ -430,7 +430,6 @@ begin
              end;
             else raise EBSONException.Create('Unknown BSON binary type '+IntToHex(o[11],2)+' at offset '+IntToHex(lstart,8));
           end;
-          raise EInvalidOperation.Create('Not Implemented');
          end;
         bsonObjectID:
          begin
