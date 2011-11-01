@@ -723,7 +723,7 @@ begin
     if (vt and varByRef)<>0 then
       raise EInvalidOperation.Create('VarByRef: not implemented');//TODO: arrays!!!
 
-    if IsArray and (vt=varByte) then
+    if IsArray and ((vt and varTypeMask)=varByte) then
      begin
       i:=bsonBinary;
       stmWrite(@i,4);
