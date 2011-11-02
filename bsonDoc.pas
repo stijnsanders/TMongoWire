@@ -625,7 +625,7 @@ var
     if Result then
      begin
       i:=bsonBinary;
-      stmWrite(@i,4);
+      stmWrite(@i,1);
       stmWriteCString(key);
       //seek end to know full size
       OleCheck(ss.Seek(0,soFromEnd,ii));
@@ -658,7 +658,7 @@ var
     if Result then
      begin
       i:=bsonBinary;
-      stmWrite(@i,4);
+      stmWrite(@i,1);
       stmWriteCString(key);
       OleCheck(stm.Seek(0,soFromCurrent,ii));
       i:=0;//fill in later
@@ -726,7 +726,7 @@ begin
     if IsArray and ((vt and varTypeMask)=varByte) then
      begin
       i:=bsonBinary;
-      stmWrite(@i,4);
+      stmWrite(@i,1);
       stmWriteCString(key);
       j:=VarArrayHighBound(v,1)-VarArrayLowBound(v,1);
       stmWrite(@j,4);
