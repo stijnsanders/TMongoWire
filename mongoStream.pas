@@ -10,7 +10,7 @@ type
     Fdb:TMongoWire;
     Fprefix:WideString;
     Fdata,Fchunk:IBSONDocument;
-    Fsize,FchunkSize,FchunkIndex,FchunkPos:Int64;
+    Fsize,FchunkSize,FchunkIndex,FchunkPos:integer;
     procedure InitData;
   public
     constructor Create(db:TMongoWire;prefix:WideString;id:OleVariant); overload;
@@ -42,6 +42,7 @@ const
   mongoStreamNField='n';
   mongoStreamDataField='data';
   mongoStreamFileNameField='filename';
+  mongoStreamUploadDateField='uploadDate';
 
 function IsNull(x,def:OleVariant):OleVariant;
 begin
@@ -82,7 +83,7 @@ end;
 
 function TMongoStream.Seek(const Offset: Int64; Origin: TSeekOrigin): Int64;
 var
-  i:int64;
+  i:integer;
 begin
   case Origin of
     soBeginning:Result:=Offset;
@@ -140,8 +141,7 @@ end;
 
 procedure TMongoStream.SaveToStream(Stream: TStream);
 var
-  i,s:integer;
-  p:int64;
+  i,s,p:integer;
   v:OleVariant;
   x:pointer;
 begin
@@ -161,8 +161,9 @@ begin
     finally
       VarArrayUnlock(v);
     end;
-    dec(p,FchunkSize);
+    dec(p,s);
    end;
+  //TODO: check md5 checksum?
 end;
 
 procedure TMongoStream.SetSize(NewSize: Integer);
@@ -179,13 +180,13 @@ end;
 class function TMongoStream.Add(db: TMongoWire; prefix: WideString;
   stream: TStream; info: IBSONDocument): OleVariant;
 var
-  chunkSize,i:int64;
+  i,l,chunkSize:integer;
   v:OleVariant;
   p:PAnsiChar;
-  l:integer;
 begin
   if prefix='' then prefix:=mongoStreamDefaultPrefix;
-  info[mongoStreamLengthField]:=stream.Size;
+  if stream.Size>$80000000 then raise Exception.Create('TMongoStream max 2GB supported');
+  info[mongoStreamLengthField]:=integer(stream.Size);
   if VarIsNull(info[mongoStreamIDField]) then
    begin
     Result:=mongoObjectId;
@@ -193,12 +194,18 @@ begin
    end
   else
     Result:=info[mongoStreamIDField];
-  //TODO: 'updateDate'?
+  if VarIsNull(info[mongoStreamChunkSizeField]) then
+   begin
+    chunkSize:=mongoStreamDefaultChunkSize;
+    info[mongoStreamChunkSizeField]:=chunkSize;
+   end
+  else
+    chunkSize:=info[mongoStreamChunkSizeField];
+  info[mongoStreamUploadDateField]:=VarFromDateTime(Now);
   //TODO: 'md5'?
   //assert db.Connected
   db.Insert(prefix+mongoStreamFilesCollection,info);
   stream.Position:=0;//?
-  chunkSize:=IsNull(info[mongoStreamChunkSizeField],mongoStreamDefaultChunkSize);
   v:=VarArrayCreate([0,chunkSize-1],varByte);
   l:=chunkSize;
   i:=0;
@@ -211,12 +218,16 @@ begin
       VarArrayUnlock(v);
     end;
     //assert l=chunkSize
-    db.Insert(prefix+mongoStreamChunksCollection,BSON([
-      mongoStreamFilesIDField,Result,
-      mongoStreamNField,i,
-      mongoStreamDataField,v
-    ]));
-    inc(i);
+    if l<>0 then
+     begin
+      if l<>chunkSize then VarArrayRedim(v,l);//assert last read from stream!
+      db.Insert(prefix+mongoStreamChunksCollection,BSON([
+        mongoStreamFilesIDField,Result,
+        mongoStreamNField,i,
+        mongoStreamDataField,v
+      ]));
+      inc(i);
+     end;
    end;
 end;
 

@@ -196,7 +196,7 @@ begin
   p.ResponseTo:=0;
   p.OpCode:=OpCode;
   p.Flags:=Flags;
-  FData.Stream.Position:=20;
+  FData.Stream.Position:=20;//SizeOf first part of TMongoWireMsgHeader
   if OpCode<>OP_KILL_CURSORS then DataCString(Collection);
 end;
 
