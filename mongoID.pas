@@ -6,7 +6,7 @@ function mongoObjectId:string;
 
 implementation
 
-uses Windows, SysUtils, bsonDoc, Registry;
+uses Windows, SysUtils, bsonDoc;
 
 var
   mongoObjectID_MachineID,mongoObjectID_Counter:integer;
@@ -46,23 +46,51 @@ begin
 end;
 
 procedure InitMongoObjectID;
+const
+  KEY_WOW64_64KEY=$0100;
 var
-  r:TRegistry;
-  g:TGUID;
+  r:HKEY;
+  s:string;
+  i,l:integer;
 begin
-  r:=TRegistry.Create;
-  try
-    //use cryptography machineguid, keep a local copy of this in initialization?
-    r.RootKey:=HKEY_LOCAL_MACHINE;
-    if r.OpenKeyReadOnly('\Software\Microsoft\Cryptography') then
-      g:=StringToGUID('{'+r.ReadString('MachineGuid')+'}')
+  //use cryptography machineguid, keep a local copy of this in initialization?
+  l:=40;
+  if RegOpenKeyEx(HKEY_LOCAL_MACHINE,PChar('Software\Microsoft\Cryptography'),
+    0,KEY_QUERY_VALUE,r)=ERROR_SUCCESS then
+   begin
+    SetLength(s,l);
+    if RegQueryValue(r,'MachineGuid',PChar(s),l)=ERROR_SUCCESS then
+     begin
+      SetLength(s,l);
+      RegCloseKey(r);
+     end
     else
-      CreateGUID(g);//?
-    mongoObjectID_MachineID:=g.D1 shr 8;
-    mongoObjectID_Counter:=GetTickCount;//0?
-  finally
-    r.Free;
-  end;
+     begin
+      //try from-32-to-64
+      RegCloseKey(r);
+      if RegOpenKeyEx(HKEY_LOCAL_MACHINE,PChar('Software\Microsoft\Cryptography'),
+        0,KEY_QUERY_VALUE or KEY_WOW64_64KEY,r)=ERROR_SUCCESS then
+       begin
+        l:=40;
+        if RegQueryValue(r,'MachineGuid',PChar(s),l)=ERROR_SUCCESS then
+          SetLength(s,l)
+        else
+          l:=0;
+        RegCloseKey(r);
+       end;
+     end;
+   end;
+  if l=36 then
+    mongoObjectID_MachineID:=StrToInt('$'+Copy(s,1,6))
+  else
+   begin
+    //render a number out of the host name
+    s:=UpperCase(GetEnvironmentVariable('COMPUTERNAME'));
+    mongoObjectID_MachineID:=$10101;
+    for i:=1 to Length(s) do mongoObjectID_MachineID:=
+      (mongoObjectID_MachineID*26+((byte(s[1])-$21) mod $39)) and $FFFFFF;
+   end;
+  mongoObjectID_Counter:=GetTickCount;//0?
 end;
 
 initialization
