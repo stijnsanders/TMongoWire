@@ -6,7 +6,7 @@ function mongoObjectId:string;
 
 implementation
 
-uses Windows, SysUtils, bsonDoc;
+uses Windows, SysUtils, bsonDoc, Registry;
 
 var
   mongoObjectID_MachineID,mongoObjectID_Counter:integer;
@@ -46,27 +46,45 @@ begin
 end;
 
 procedure InitMongoObjectID;
+const 
+  KEY_WOW64_64KEY = $0100;
 var
+  r:TRegistry;
   s:string;
   i,l:integer;
 begin
   //render a number out of the host name
-  l:=MAX_PATH;
-  SetLength(s,l);
-  if GetComputerName(PChar(s),cardinal(l)) then SetLength(s,l) else
-    s:=GetEnvironmentVariable('COMPUTERNAME');
+  r:=TRegistry.Create(KEY_READ or KEY_WOW64_64KEY);
+  try
+    r.RootKey:=HKEY_LOCAL_MACHINE;
+    if r.OpenKey('\Software\Microsoft\Cryptography',false) then
+      s:=r.ReadString('MachineGuid')
+    else
+      s:='';
+  finally
+    r.Free;
+  end;
+  if s='' then
+   begin
+    l:=MAX_PATH;
+    SetLength(s,l);
+    if GetComputerName(PChar(s),cardinal(l)) then SetLength(s,l) else
+      s:=GetEnvironmentVariable('COMPUTERNAME');
+    mongoObjectID_MachineID:=$10101;
+    for i:=1 to Length(s) do
+      case s[i] of
+        '0'..'9':
+          mongoObjectID_MachineID:=(mongoObjectID_MachineID*36+
+            (byte(s[i]) and $0F)) and $FFFFFF;
+        'A'..'Z','a'..'z':
+          mongoObjectID_MachineID:=(mongoObjectID_MachineID*36+
+            (byte(s[i]) and $1F)+9) and $FFFFFF;
+        //else ignore
+      end;
+   end
+  else
+    mongoObjectID_MachineID:=StrToInt('$'+Copy(s,1,6));
   mongoObjectID_Counter:=GetTickCount;//0?
-  mongoObjectID_MachineID:=$10101;
-  for i:=1 to Length(s) do
-    case s[i] of
-      '0'..'9':
-        mongoObjectID_MachineID:=(mongoObjectID_MachineID*36+
-          (byte(s[i]) and $0F)) and $FFFFFF;
-      'A'..'Z','a'..'z':
-        mongoObjectID_MachineID:=(mongoObjectID_MachineID*36+
-          (byte(s[i]) and $1F)+9) and $FFFFFF;
-      //else ignore
-    end;
 end;
 
 initialization
