@@ -2,7 +2,7 @@ unit mongoWire;
 
 interface
 
-uses SysUtils, SyncObjs, Classes, Sockets, bsonDoc;
+uses SysUtils, SyncObjs, Classes, Sockets, bsonDoc, mongoMD5;
 
 type
   TBSONDocumentsEnumerator=class //abstract
@@ -10,7 +10,7 @@ type
     function Next(Doc:IBSONDocument):boolean; virtual; abstract;
   end;
 
-  TMongoWire=class(TObject)
+  TMongoWire=class(TObject)                                         
   private
     FSocket:TTcpClient;
     FData:TStreamAdapter;
@@ -31,6 +31,11 @@ type
     procedure Open(ServerName:string='localhost';Port:integer=27017);
     procedure Close;
 
+    function Authenticate(
+      Database:WideString;
+      Username:WideString;
+      Password:WideString
+    ): Boolean;
     function Get(
       Collection:WideString;
       QryObj:IBSONDocument;
@@ -322,6 +327,28 @@ begin
   finally
     FReadLock.Leave;
   end;
+end;
+
+function TMongoWire.Authenticate(Database:WideString; Username:WideString;
+  Password:WideString): Boolean;
+var
+  Nonce, AuthenticationResult: IBSONDocument;
+  Query: IBSONDocument;
+begin
+  Query := BSON([
+    'getnonce', 1
+  ]);
+  Nonce := Get(Database + '.$cmd', Query, nil);
+
+  Query := BSON([
+    'authenticate', 1,
+    'user', Username,
+    'nonce', VarToStr(Nonce['nonce']),
+    'key', MongoMD5Hex(VarToStr(Nonce['nonce']) + UserName + MongoMD5Hex(UserName+':mongo:'+Password))
+  ]);
+  AuthenticationResult := Get(Database + '.$cmd', Query, nil);
+
+  Result := AuthenticationResult['ok'] = 1;
 end;
 
 function TMongoWire.Get(Collection: WideString; QryObj,
