@@ -20,7 +20,7 @@ uses
 
 function MD5Hash(x:UTF8String):UTF8String;
 const
-  tailMD5:Utf8String=#$80+
+  tailMD5:Utf8String=#$80#0#0#0#0+
     #0#0#0#0#0#0#0#0#0#0#0#0#0#0#0#0+
     #0#0#0#0#0#0#0#0#0#0#0#0#0#0#0#0+
     #0#0#0#0#0#0#0#0#0#0#0#0#0#0#0#0+
