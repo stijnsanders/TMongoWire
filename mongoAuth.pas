@@ -129,7 +129,7 @@ begin
    end;
   SetLength(Result,32);
   for k:=0 to 31 do
-    Result[k+1]:=hex[h[k shr 3] shr (((k xor 1) and 7) shl 2) and $F];
+    Result[k+1]:=hex[h[k shr 3] shr ((k xor 1) shl 2) and $F];
 end;
 
 procedure MongoWireAuthenticate(MongoWire:TMongoWire;
