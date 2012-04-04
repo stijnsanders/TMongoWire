@@ -898,7 +898,7 @@ begin
       i:=0;
       stmWrite(@i,1);
       //write total length
-      OleCheck(stm.Seek(vstack[vindex].vstart,soFromBeginning,lx));
+      OleCheck(stm.Seek(lstart+vstack[vindex].vstart,soFromBeginning,lx));
       i:=ltotal-vstack[vindex].vstart;
       OleCheck(stm.Write(@i,4,@li));
       //return to end position
