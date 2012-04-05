@@ -82,6 +82,8 @@ type
     function Next(Doc:IBSONDocument):boolean; override;
     property NumberToReturn:integer read FNumberToReturn write FNumberToReturn;
     property NumberToSkip:integer read FNumberToSkip write FNumberToSkip;//TODO: set?
+
+    function Explain(Collection: WideString; Query,OrderBy: IBSONDocument): IBSONDocument;
   end;
 
   //TODO: TBSONDocumentsFromVariantArray=class(TBSONDocumentsEnumerator)
@@ -606,5 +608,27 @@ begin
     raise EMongoQueryError.Create('MongoWire.Query: '+VarToStr(d['$err']));
    end;
 end;
+
+function TMongoWireQuery.Explain(Collection: WideString; Query,OrderBy: IBSONDocument): IBSONDocument;
+var
+  vQuery: IBSONDocument;
+begin
+  vQuery := BSON;
+  vQuery.Item['query'] := Query;
+
+  if Assigned(OrderBy) then
+  begin
+    vQuery.Item['orderby'] := OrderBy;
+  end;
+
+  vQuery.Item['$explain'] := True;
+
+  Self.Query(Collection, vQuery);
+
+  Result := BSON;
+  
+  Self.Next(Result);
+end;
+
 
 end.
