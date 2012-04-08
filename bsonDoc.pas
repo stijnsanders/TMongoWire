@@ -896,6 +896,7 @@ begin
         varDispatch,varUnknown:
          begin
           uu:=IUnknown(v);
+          if uu<>nil then
           if not TryWriteBSONDocument then
           {$IFDEF BSON_SUPPORT_REGEX}
           if not TryWriteRegExp then
