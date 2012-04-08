@@ -326,6 +326,7 @@ var
     vl,vi,vlength,vstart:integer;
     vt:TVarType;
   end;
+  vArrayIsEmpty: Boolean;
 const
   hex:array[0..15] of char='0123456789abcdef';
 begin
@@ -358,9 +359,24 @@ begin
         for j:=0 to vstack[vindex].vi-1 do v[j]:=vstack[vindex].vv[j];
         //store item
         if vindex=0 then
-          Set_Item(vstack[vindex].vkey,v)
+        begin
+          Set_Item(vstack[vindex].vkey,v);
+        end
         else
+        begin
+          //Empty Embedded array
+          vArrayIsEmpty := VarIsArray(vstack[vindex-1].vv) and (VarArrayHighBound(vstack[vindex-1].vv, 1) = -1);
+          if vArrayIsEmpty then
+          begin
+            SetLength(vstack[vindex-1].vv, 1);
+          end;
           vstack[vindex-1].vv[vstack[vindex-1].vi]:=v;
+
+          if (vArrayIsEmpty) then
+          begin
+            vstack[vindex-1].vi := 1;
+          end;
+        end;
         //pop from array stack
         SetLength(vstack[vindex].vv,0);
         dec(vindex);
