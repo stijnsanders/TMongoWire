@@ -328,6 +328,7 @@ var
   end;
 const
   hex:array[0..15] of char='0123456789abcdef';
+  vstackValuesGrowStep=$100;
 begin
   ltotal:=0;
   lstart:=0;
@@ -360,7 +361,14 @@ begin
         if vindex=0 then
           Set_Item(vstack[vindex].vkey,v)
         else
+         begin
+          if vstack[vindex].vi=vstack[vindex].vl then
+           begin
+            inc(vstack[vindex].vl,vstackValuesGrowStep);//growstep
+            SetLength(vstack[vindex].vv,vstack[vindex].vl);
+           end;
           vstack[vindex-1].vv[vstack[vindex-1].vi]:=v;
+         end;
         //pop from array stack
         SetLength(vstack[vindex].vv,0);
         dec(vindex);
@@ -503,7 +511,7 @@ begin
          begin
           if vstack[vindex].vi=vstack[vindex].vl then
            begin
-            inc(vstack[vindex].vl,$100);//growstep
+            inc(vstack[vindex].vl,vstackValuesGrowStep);//growstep
             SetLength(vstack[vindex].vv,vstack[vindex].vl);
            end;
           if k<>IntToStr(vstack[vindex].vi) then raise EBSONException.Create('Unexpected BSON array index key: "'+k+'"<>"'+
