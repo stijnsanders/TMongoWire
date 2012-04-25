@@ -828,7 +828,7 @@ begin
            end
           else
           //detect objectID
-		      if (Length(w)=Length(bsonObjectIDPrefix)+24+Length(bsonObjectIDSuffix)) then //and the other are hex digits?
+		      if (Length(w)=Length(bsonObjectIDPrefix)+24+Length(bsonObjectIDSuffix)) and CompareMem(@w[1], @bsonObjectIDPrefix[1], Length(bsonObjectIDPrefix)) and CompareMem(@w[Length(bsonObjectIDPrefix)+24+1], @bsonObjectIDSuffix[1], Length(bsonObjectIDSuffix)) then //and the other are hex digits?
            begin
             i:=bsonObjectID;
             stmWrite(@i,1);
