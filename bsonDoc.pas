@@ -44,6 +44,7 @@ const
   bsonRegExPrefix:WideString=#$FFF1'bsonRegEx'#$FFF2;
   bsonObjectIDPrefix:WideString='ObjectID("';
   bsonObjectIDSuffix:WideString='")';
+  bsonObjectID_L=36;//=Length(bsonObjectIDPrefix)+24+Length(bsonObjectIDSuffix);
 
 type
   IBSONDocument = interface(IUnknown)
@@ -683,12 +684,22 @@ var
       OleCheck(stm.Seek(0,soFromBeginning,jj));
      end;
   end;
+  function StartsWith(a,b:WideString):boolean;
+  var
+    i,l1,l2:integer;
+  begin
+    i:=1;
+    l1:=Length(a);
+    l2:=Length(b);
+    while (i<=l1) and (i<=l2) and (a[i]=b[i]) do inc(i);
+    Result:=i=l2+1;
+  end;
 var
   vt:TVarType;
-  i,j:integer;
+  w:WideString;
+  i,j,wl:integer;
   v:OleVariant;
   ii:int64;
-  w:WideString;
   o:array[0..11] of byte;
   gg:TGUID absolute o;
   dd:double absolute o;
@@ -813,7 +824,10 @@ begin
          begin
           //detect GUID //TODO try to rig varStrArg
           w:=VarToWideStr(v);
-          if (Length(W)=38) and (W[1]='{') and (w[38]='}') and (w[10]='-') and (w[15]='-') and (w[20]='-') and (w[25]='-') then //and the other are hex digits?
+          wl:=Length(w);
+          if (wl=38) and (w[1]='{') and (w[38]='}')
+            and (w[10]='-') and (w[15]='-')
+            and (w[20]='-') and (w[25]='-') then //and the other are hex digits?
            begin
             //assume UUID
             gg:=StringToGUID(w);
@@ -828,7 +842,7 @@ begin
            end
           else
           //detect objectID
-		      if (Length(w)=Length(bsonObjectIDPrefix)+24+Length(bsonObjectIDSuffix)) then //and the other are hex digits?
+		      if (wl=bsonObjectID_L) and StartsWith(w,bsonObjectIDPrefix) then //and the other are hex digits?
            begin
             i:=bsonObjectID;
             stmWrite(@i,1);
@@ -845,7 +859,7 @@ begin
            end
           else
           //detect javascript
-          if (Copy(w,1,Length(bsonJavaScriptCodePrefix))=bsonJavaScriptCodePrefix) then
+          if StartsWith(w,bsonJavaScriptCodePrefix) then
            begin
             i:=bsonJavaScriptCode;
             stmWrite(@i,1);
@@ -854,7 +868,7 @@ begin
            end
           else
           //detect regex
-          if (Copy(w,1,Length(bsonRegExPrefix))=bsonRegExPrefix) then
+          if StartsWith(w,bsonRegExPrefix) then
            begin
             i:=bsonRegEx;
             stmWrite(@i,1);
