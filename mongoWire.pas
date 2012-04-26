@@ -60,6 +60,7 @@ type
       Selector:IBSONDocument;
       SingleRemove:boolean=false
     );
+    function Ping: Boolean;
   end;
 
   TMongoWireQuery=class(TBSONDocumentsEnumerator)
@@ -466,6 +467,15 @@ begin
     CloseMsg;
   finally
     FWriteLock.Leave;
+  end;
+end;
+
+function TMongoWire.Ping: Boolean;
+begin
+  try
+    Result := Get('admin.$cmd', BSON(['ping', 1]))['ok'] = 1;
+  except
+    Result := False;
   end;
 end;
 
