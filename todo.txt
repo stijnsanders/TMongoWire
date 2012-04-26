@@ -10,8 +10,6 @@ when data is coming in, send data already (detect TCP packet size?)
 
 async: StartQuery CheckResponse ReadResponse
 
-authentication
-
 connection pool
 
 database commands
