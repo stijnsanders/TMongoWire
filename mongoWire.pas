@@ -61,6 +61,11 @@ type
       SingleRemove:boolean=false
     );
     function Ping: Boolean;
+    procedure EnsureIndex(
+      Database,Collection:WideString;
+      Index:IBSONDocument;
+      Options:IBSONDocument=nil
+    );
   end;
 
   TMongoWireQuery=class(TBSONDocumentsEnumerator)
@@ -100,6 +105,8 @@ const
   mongoWire_QueryFlag_NoCursorTimeout = $0010;
   mongoWire_QueryFlag_AwaitData       = $0020;
   mongoWire_QueryFlag_Exhaust         = $0040;
+
+  mongoWire_Db_SystemIndexCollection = 'system.indexes';
 
 implementation
 
@@ -477,6 +484,48 @@ begin
   except
     Result := False;
   end;
+end;
+
+procedure TMongoWire.EnsureIndex(Database,Collection:WideString;
+  Index:IBSONDocument;Options:IBSONDocument=nil);
+var
+  Document: IBSONDocument;
+  Name: String;
+  I: Integer;
+  IndexArray: Variant;
+begin
+  Document := BSON([
+    'ns', Database + '.' + Collection,
+    'key', Index
+  ]);
+  
+  if (Options = nil) or (Options['name'] = Null) then begin
+    Name := '';
+    IndexArray := Index.ToVarArray;
+    for I := VarArrayLowBound(IndexArray, 1) to VarArrayHighBound(IndexArray, 1) do
+      Name := Name + VarToStr(VarArrayGet(IndexArray, [I, 0])) + '_' + VarToStr(VarArrayGet(IndexArray, [I, 1]));
+
+    if Length(Database + '.' + Collection + '.' + Name) > 128 then
+      raise Exception.Create('Index name too long, please specify a custom name using the name option.');
+
+    Document['name'] := Name;
+  end else
+    Document['name'] := Options['name'];
+
+  if Options <> nil then begin
+    if Options['background'] <> Null then
+      Document['background'] := Options['background'];
+    if Options['dropDups'] <> Null then
+      Document['dropDups'] := Options['dropDups'];
+    if Options['sparse'] <> Null then
+      Document['sparse'] := Options['sparse'];
+    if Options['unique'] <> Null then
+      Document['unique'] := Options['unique'];
+    if Options['v'] <> Null then
+      Document['v'] := Options['v'];
+  end;
+
+  Insert(Database + '.' + mongoWire_Db_SystemIndexCollection, Document);
 end;
 
 { TMongoWireQuery }
