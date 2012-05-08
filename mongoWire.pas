@@ -103,7 +103,7 @@ const
 
 implementation
 
-uses ActiveX, Variants;
+uses ActiveX, Variants, WinSock;
 
 const
   OP_REPLY        = 1;
@@ -157,6 +157,8 @@ begin
 end;
 
 procedure TMongoWire.Open(ServerName: string; Port: integer);
+var
+  i,l:integer;
 begin
   FSocket.Close;
   FSocket.RemoteHost:=ServerName;
@@ -164,6 +166,9 @@ begin
   FSocket.Open;
   if not FSocket.Connected then
     raise EMongoConnectFailed.Create('MongoWire: failed to connect to "'+ServerName+':'+IntToStr(Port)+'"');
+  i:=1;
+  l:=4;
+  setsockopt(FSocket.Handle,IPPROTO_TCP,TCP_NODELAY,@i,l);
 end;
 
 procedure TMongoWire.Close;
