@@ -30,6 +30,7 @@ type
 
     procedure Open(ServerName:string='localhost';Port:integer=27017);
     procedure Close;
+    function Ping: boolean;
 
     function Get(
       Collection:WideString;
@@ -60,7 +61,6 @@ type
       Selector:IBSONDocument;
       SingleRemove:boolean=false
     );
-    function Ping: Boolean;
   end;
 
   TMongoWireQuery=class(TBSONDocumentsEnumerator)
