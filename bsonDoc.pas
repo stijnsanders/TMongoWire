@@ -68,6 +68,7 @@ type
       ValueIndex:integer;
     end;
     FValues:array of OleVariant;
+    FOrderedKeyIndexes: array of Integer;
     procedure GetKeyIndex(Key: WideString;var Index:integer; var Match:boolean);
   protected
     function Get_Item(const Key: WideString): OleVariant; safecall;
@@ -204,10 +205,16 @@ begin
       inc(FElementSize,GrowStep);
       SetLength(FKeys,FElementSize);
       SetLength(FValues,FElementSize);
+      SetLength(FOrderedKeyIndexes,FElementSize);
      end;
-    for i:=FElementIndex-1 downto x do FKeys[i+1]:=FKeys[i];
+    for i:=FElementIndex-1 downto x do begin
+      FOrderedKeyIndexes[i]:=FOrderedKeyIndexes[i]+1;
+      FKeys[i+1]:=FKeys[i];
+    end;
+
     FKeys[x].Key:=Key;
     FKeys[x].ValueIndex:=FElementIndex;
+    FOrderedKeyIndexes[FElementIndex]:=x;
     inc(FElementIndex);
    end;
   FValues[FKeys[x].ValueIndex]:=Value;
@@ -723,8 +730,8 @@ begin
    begin
     if vindex=-1 then
      begin
-      key:=FKeys[xi].Key;
-      v:=FValues[FKeys[xi].ValueIndex];
+      key:=FKeys[FOrderedKeyIndexes[xi]].Key;
+      v:=FValues[FKeys[FOrderedKeyIndexes[xi]].ValueIndex];
       inc(xi);
      end
     else
@@ -975,8 +982,8 @@ begin
   Result:=VarArrayCreate([0,FElementIndex-1,0,1],varVariant);
   for i:=0 to FElementIndex-1 do
    begin
-    Result[i,0]:=FKeys[i].Key;
-    Result[i,1]:=FValues[FKeys[i].ValueIndex];
+    Result[i,0]:=FKeys[FOrderedKeyIndexes[i]].Key;
+    Result[i,1]:=FValues[FKeys[FOrderedKeyIndexes[i]].ValueIndex];
    end;
 end;
 
