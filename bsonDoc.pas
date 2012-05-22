@@ -62,13 +62,15 @@ type
   TBSONDocument = class(TInterfacedObject, IBSONDocument, IPersistStream)
   private
     FDirty:boolean;
-    FElementIndex,FElementSize,FLastIndex:integer;
-    FKeys:array of record
+    FElementIndex,FElementSize:integer;
+    FElements:array of record
       Key:WideString;
-      ValueIndex:integer;
+      Value:OleVariant;
     end;
-    FValues:array of OleVariant;
-    procedure GetKeyIndex(Key: WideString;var Index:integer; var Match:boolean);
+    FSorted:array of integer;
+    FGotIndex,FGotSorted:integer;
+    FGotMatch:boolean;
+    function GetKeyIndex(Key: WideString): boolean;
   protected
     function Get_Item(const Key: WideString): OleVariant; safecall;
     procedure Set_Item(const Key: WideString; Value: OleVariant); safecall;
@@ -123,14 +125,16 @@ begin
   FDirty:=false;
   FElementIndex:=0;
   FElementSize:=0;
-  FLastIndex:=0;
+  FGotIndex:=0;
+  FGotSorted:=0;
+  FGotMatch:=false;
 end;
 
 destructor TBSONDocument.Destroy;
 var
   i:integer;
 begin
-  for i:=0 to FElementIndex-1 do VarClear(FValues[i]);
+  for i:=0 to FElementIndex-1 do VarClear(FElements[i].Value);
   inherited;
 end;
 
@@ -140,34 +144,34 @@ begin
   raise EInvalidOperation.Create('Not implemented');
 end;
 
-procedure TBSONDocument.GetKeyIndex(Key: WideString; var Index: integer;
-  var Match: boolean);
+function TBSONDocument.GetKeyIndex(Key: WideString):boolean;
 var
-  a,b,c,x:integer;
+  a,b,c,d,x:integer;
 begin
   //case sensitivity?
   //check last getindex, speeds up set right after get
-  if (FElementIndex<>0) and (CompareStr(Key,FKeys[FLastIndex].Key)=0) then
+  if FGotMatch and (CompareStr(Key,FElements[FGotIndex].Key)=0) then
    begin
-    Index:=FLastIndex;
-    Match:=true;
+    //assert FGotIndex=FSorted[FGotSorted];
+    Result:=true;
    end
   else
    begin
     a:=0;
     b:=FElementIndex-1;
-    Match:=false;//default
+    d:=FElementIndex;
+    FGotMatch:=false;//default
     while b>=a do
      begin
       c:=(a+b) div 2;
+      d:=FSorted[c];
       //if c=a? c=b?
-      x:=CompareStr(Key,FKeys[c].Key);
+      x:=CompareStr(Key,FElements[d].Key);
       if x=0 then
        begin
         a:=c;
         b:=c-1;
-        Match:=true;
-        FLastIndex:=c;
+        FGotMatch:=true;
        end
       else
         if x<0 then
@@ -175,42 +179,37 @@ begin
         else
           if a=c then inc(a) else a:=c;
      end;
-    Index:=a;
+    FGotSorted:=a;
+    FGotIndex:=d;
+    Result:=FGotMatch;
    end;
 end;
 
 function TBSONDocument.Get_Item(const Key: WideString): OleVariant;
-var
-  x:integer;
-  m:boolean;
 begin
-  GetKeyIndex(Key,x,m);
-  if m then x:=FKeys[x].ValueIndex;
-  if m and not(VarIsEmpty(FValues[x])) then Result:=FValues[x] else Result:=Null;
+  if GetKeyIndex(Key) then Result:=FElements[FGotIndex].Value else Result:=Null;
 end;
 
 procedure TBSONDocument.Set_Item(const Key: WideString; Value: OleVariant);
 var
-  x,i:integer;
-  m:boolean;
+  i:integer;
 const
   GrowStep=$20;//not too much, not too little (?)
 begin
-  GetKeyIndex(Key,x,m);
-  if not(m) then
+  if not GetKeyIndex(Key) then
    begin
     if FElementIndex=FElementSize then
      begin
       inc(FElementSize,GrowStep);
-      SetLength(FKeys,FElementSize);
-      SetLength(FValues,FElementSize);
+      SetLength(FElements,FElementSize);
+      SetLength(FSorted,FElementSize);
      end;
-    for i:=FElementIndex-1 downto x do FKeys[i+1]:=FKeys[i];
-    FKeys[x].Key:=Key;
-    FKeys[x].ValueIndex:=FElementIndex;
+    for i:=FElementIndex-1 downto FGotSorted do FSorted[i+1]:=FSorted[i];//Move?
+    FSorted[FGotSorted]:=FElementIndex;
+    FElements[FElementIndex].Key:=Key;
     inc(FElementIndex);
    end;
-  FValues[FKeys[x].ValueIndex]:=Value;
+  FElements[FGotIndex].Value:=Value;
   //TODO: if VarType(Value)=varEmpty then drop element
   FDirty:=true;
 end;
@@ -723,8 +722,8 @@ begin
    begin
     if vindex=-1 then
      begin
-      key:=FKeys[xi].Key;
-      v:=FValues[FKeys[xi].ValueIndex];
+      key:=FElements[xi].Key;
+      v:=FElements[xi].Value;
       inc(xi);
      end
     else
@@ -962,10 +961,10 @@ var
   i:integer;
 begin
   FDirty:=false;//?
-  for i:=0 to FElementIndex-1 do VarClear(FValues[i]);
+  for i:=0 to FElementIndex-1 do VarClear(FElements[i].Value);
   //TODO: if IBSONDocument then Clear?
   FElementIndex:=0;//?
-  FLastIndex:=0;
+  FGotMatch:=false;
 end;
 
 function TBSONDocument.ToVarArray: OleVariant;
@@ -975,8 +974,8 @@ begin
   Result:=VarArrayCreate([0,FElementIndex-1,0,1],varVariant);
   for i:=0 to FElementIndex-1 do
    begin
-    Result[i,0]:=FKeys[i].Key;
-    Result[i,1]:=FValues[FKeys[i].ValueIndex];
+    Result[i,0]:=FElements[i].Key;
+    Result[i,1]:=FElements[i].Value;
    end;
 end;
 
