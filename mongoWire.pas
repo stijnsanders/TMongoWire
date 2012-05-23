@@ -106,6 +106,8 @@ const
   mongoWire_QueryFlag_AwaitData       = $0020;
   mongoWire_QueryFlag_Exhaust         = $0040;
 
+  mongoWire_Db_SystemIndexCollection = 'system.indexes';
+
 implementation
 
 uses ActiveX, Variants, WinSock;
