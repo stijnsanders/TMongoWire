@@ -207,6 +207,7 @@ begin
     for i:=FElementIndex-1 downto FGotSorted do FSorted[i+1]:=FSorted[i];//Move?
     FSorted[FGotSorted]:=FElementIndex;
     FElements[FElementIndex].Key:=Key;
+    FGotIndex:=FElementIndex;
     inc(FElementIndex);
    end;
   FElements[FGotIndex].Value:=Value;
