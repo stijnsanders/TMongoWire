@@ -196,6 +196,8 @@ var
 const
   GrowStep=$20;//not too much, not too little (?)
 begin
+  //if ((VarType(Value) and varArray)<>0) and (VarArrayDimCount(v)>1) then
+  //  raise EBSONException.Create('VarArray: multi-dimensional arrays not supported');
   if not GetKeyIndex(Key) then
    begin
     if FElementIndex=FElementSize then
@@ -205,9 +207,10 @@ begin
       SetLength(FSorted,FElementSize);
      end;
     for i:=FElementIndex-1 downto FGotSorted do FSorted[i+1]:=FSorted[i];//Move?
-    FSorted[FGotSorted]:=FElementIndex;
-    FElements[FElementIndex].Key:=Key;
+    FGotIndex:=FElementIndex;
     inc(FElementIndex);
+    FSorted[FGotSorted]:=FGotIndex;
+    FElements[FGotIndex].Key:=Key;
    end;
   FElements[FGotIndex].Value:=Value;
   //TODO: if VarType(Value)=varEmpty then drop element
