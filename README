@@ -26,3 +26,18 @@ mongoWire.pas
 	
 http://yoy.be/TMongoWire
 https://github.com/stijnsanders/TMongoWire
+
+
+Additional tools
+----------------
+
+bsonUtils.pas
+  function BsonToJson(Doc:IBSONDocument):WideString;
+    Converts a BSON document into a JSON string.
+  function JsonToBson(jsonData:WideString):IBSONDocument;
+    Converts a JSON string into a BSON document.
+  procedure JsonIntoBson(jsonData:WideString;doc:IBSONDocument); overload;
+    Parses a JSON string and adds any keys to an existing BSON document, overwriting the value if a key already exists.
+  procedure JsonIntoBson(jsonData:WideString;doc:IBSONDocument;var EndIndex:integer); overload;
+    Parses only the first JSON object from a string into an existing BSON document, and returns the index into the string where the JSON object ends.
+	Use this method to iterate over a list of JSON strings. (See also IBSONDocument.Clear)
