@@ -16,6 +16,7 @@ bsonDoc.pas
     Creates a BSON document object ready for use.
     Optionally pass a sequence of key-value pairs, e.g.: BSON(['x',5,'y',7]);
     Use '[' and ']' to created embedded documents, e.g.: BSON(['x','[','$gt',7,']']);
+    Use VarArrayOf or 1-dimensional variant arrays to add arrays, e.g.: BSON(['x',VarArrayOf(1,2,3)]);
 
 mongoWire.pas
   TMongoWire=class(TObject)
