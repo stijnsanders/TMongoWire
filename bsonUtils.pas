@@ -5,9 +5,10 @@ interface
 uses SysUtils, bsonDoc;
 
 function BsonToJson(Doc:IBSONDocument):WideString;
-function JsonToBson(jsonData:WideString):IBSONDocument;
-procedure JsonIntoBson(jsonData:WideString;doc:IBSONDocument); overload;
-procedure JsonIntoBson(jsonData:WideString;doc:IBSONDocument;var EndIndex:integer); overload;
+function JsonToBson(const jsonData:WideString):IBSONDocument;
+procedure JsonIntoBson(const jsonData:WideString;doc:IBSONDocument); overload;
+procedure JsonIntoBson(const jsonData:WideString; doc:IBSONDocument;
+  var EndIndex:integer); overload;
 
 type
   EJsonDecodeException=class(Exception);
@@ -41,7 +42,7 @@ function BsonToJson(Doc:IBSONDocument):WideString;
       case w of
         0..31,word('"'),word('\'),word('/'):
          begin
-          if j>k then
+          if j+2>k then
            begin
             k:=((k div resGrowStep)+1)*resGrowStep;
             SetLength(Result,k);
@@ -73,7 +74,7 @@ function BsonToJson(Doc:IBSONDocument):WideString;
          end;
         else
          begin
-          if j>k then
+          if j>=k then
            begin
             k:=((k div resGrowStep)+1)*resGrowStep;
             SetLength(Result,k);
@@ -238,13 +239,13 @@ begin
   end;
 end;
 
-function JsonToBson(jsonData:WideString):IBSONDocument;
+function JsonToBson(const jsonData:WideString):IBSONDocument;
 begin
   Result:=BSON;
   JsonIntoBson(jsonData,Result);
 end;
 
-procedure JsonIntoBson(jsonData:WideString;doc:IBSONDocument);
+procedure JsonIntoBson(const jsonData:WideString;doc:IBSONDocument);
 var
   i,l:integer;
 begin
@@ -256,7 +257,8 @@ begin
     'JSON with unexpected data past end #'+IntToStr(i));
 end;
 
-procedure JsonIntoBson(jsonData:WideString;doc:IBSONDocument;var EndIndex:integer);
+procedure JsonIntoBson(const jsonData:WideString; doc:IBSONDocument;
+  var EndIndex:integer);
 var
   i,l:integer;
   function SkipWhiteSpace:WideChar;
@@ -275,7 +277,7 @@ var
       Result:=#13#10'(#'+IntToStr(i)+')"...'+Copy(jsonData,i-VicinityExtent-1,VicinityExtent)+
         ' >>> '+jsonData[i]+' <<< '+Copy(jsonData,i+1,VicinityExtent)+'"';
   end;
-  procedure Expect(c:WideChar;msg:string);
+  procedure Expect(c:WideChar;const msg:string);
   begin
     while (i<=l) and (jsonData[i]<=' ') do inc(i);
     if (i>l) or (jsonData[i]<>c) then

@@ -20,49 +20,49 @@ type
       Data:TStreamAdapter;
     end;
     FQueueIndex,FRequestIndex:integer;
-    procedure DataCString(x: WideString);
-    procedure OpenMsg(OpCode,Flags:integer;Collection:WideString);
+    procedure DataCString(const x: WideString);
+    procedure OpenMsg(OpCode,Flags:integer;const Collection:WideString);
     function CloseMsg(Data:TStreamAdapter=nil):integer;//RequestID
     procedure ReadMsg(RequestID:integer);
   public
     constructor Create;
     destructor Destroy; override;
 
-    procedure Open(ServerName:string='localhost';Port:integer=27017);
+    procedure Open(const ServerName:string='localhost';Port:integer=27017);
     procedure Close;
 
     function Get(
-      Collection:WideString;
+      const Collection:WideString;
       QryObj:IBSONDocument;
       ReturnFieldSelector:IBSONDocument=nil
     ):IBSONDocument;
     //Query: see TMongoWireQuery.Create
     procedure Update(
-      Collection:WideString;
+      const Collection:WideString;
       Selector,Doc:IBSONDocument;
       Upsert:boolean=false;
       MultiUpdate:boolean=false
     );
     procedure Insert(
-      Collection:WideString;
+      const Collection:WideString;
       Doc:IBSONDocument
     ); overload;
     procedure Insert(
-      Collection:WideString;
+      const Collection:WideString;
       const Docs:array of IBSONDocument
     ); overload;
     procedure Insert(
-      Collection:WideString;
+      const Collection:WideString;
       Docs:TBSONDocumentsEnumerator
     ); overload;
     procedure Delete(
-      Collection:WideString;
+      const Collection:WideString;
       Selector:IBSONDocument;
       SingleRemove:boolean=false
     );
     function Ping: Boolean;
     procedure EnsureIndex(
-      Database,Collection:WideString;
+      const Database,Collection:WideString;
       Index:IBSONDocument;
       Options:IBSONDocument=nil
     );
@@ -81,7 +81,7 @@ type
     constructor Create(MongoWire:TMongoWire);
     destructor Destroy; override;
     procedure Query(
-      Collection:WideString;
+      const Collection:WideString;
       QryObj:IBSONDocument;
       ReturnFieldSelector:IBSONDocument=nil;
       Flags:integer=0);
@@ -163,7 +163,7 @@ begin
   inherited;
 end;
 
-procedure TMongoWire.Open(ServerName: string; Port: integer);
+procedure TMongoWire.Open(const ServerName: string; Port: integer);
 var
   i,l:integer;
 begin
@@ -183,7 +183,7 @@ begin
   FSocket.Close;
 end;
 
-procedure TMongoWire.DataCString(x:WideString);
+procedure TMongoWire.DataCString(const x:WideString);
 var
   s:UTF8String;
   l:integer;
@@ -196,7 +196,7 @@ begin
     FData.Stream.Write(s[1],l+1);
 end;
 
-procedure TMongoWire.OpenMsg(OpCode,Flags:integer;Collection:WideString);
+procedure TMongoWire.OpenMsg(OpCode,Flags:integer;const Collection:WideString);
 var
   p:PMongoWireMsgHeader;
 begin
@@ -337,7 +337,7 @@ begin
   end;
 end;
 
-function TMongoWire.Get(Collection: WideString; QryObj,
+function TMongoWire.Get(const Collection: WideString; QryObj,
   ReturnFieldSelector: IBSONDocument): IBSONDocument;
 var
   i:integer;
@@ -383,7 +383,7 @@ begin
   end;
 end;
 
-procedure TMongoWire.Update(Collection: WideString; Selector,
+procedure TMongoWire.Update(const Collection: WideString; Selector,
   Doc: IBSONDocument; Upsert, MultiUpdate: boolean);
 var
   i:integer;
@@ -412,7 +412,7 @@ begin
   end;
 end;
 
-procedure TMongoWire.Insert(Collection: WideString; Doc: IBSONDocument);
+procedure TMongoWire.Insert(const Collection: WideString; Doc: IBSONDocument);
 begin
   if Doc=nil then raise EMongoException.Create('MongoWire.Insert: Doc required');
   FWriteLock.Enter;
@@ -425,7 +425,7 @@ begin
   end;
 end;
 
-procedure TMongoWire.Insert(Collection: WideString;
+procedure TMongoWire.Insert(const Collection: WideString;
   const Docs: array of IBSONDocument);
 var
   i:integer;
@@ -440,7 +440,8 @@ begin
   end;
 end;
 
-procedure TMongoWire.Insert(Collection: WideString; Docs: TBSONDocumentsEnumerator);
+procedure TMongoWire.Insert(const Collection: WideString;
+  Docs: TBSONDocumentsEnumerator);
 var
   d:IBSONDocument;
 begin
@@ -455,7 +456,7 @@ begin
   end;
 end;
 
-procedure TMongoWire.Delete(Collection: WideString;
+procedure TMongoWire.Delete(const Collection: WideString;
   Selector: IBSONDocument; SingleRemove: boolean);
 var
   i:integer;
@@ -491,7 +492,7 @@ begin
   end;
 end;
 
-procedure TMongoWire.EnsureIndex(Database,Collection:WideString;
+procedure TMongoWire.EnsureIndex(const Database,Collection:WideString;
   Index:IBSONDocument;Options:IBSONDocument=nil);
 var
   Document: IBSONDocument;
@@ -580,7 +581,7 @@ begin
    end;
 end;
 
-procedure TMongoWireQuery.Query(Collection: WideString; QryObj,
+procedure TMongoWireQuery.Query(const Collection: WideString; QryObj,
   ReturnFieldSelector: IBSONDocument; Flags: integer);
 var
   i:integer;

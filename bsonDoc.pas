@@ -70,7 +70,7 @@ type
     FSorted:array of integer;
     FGotIndex,FGotSorted:integer;
     FGotMatch:boolean;
-    function GetKeyIndex(Key: WideString): boolean;
+    function GetKeyIndex(const Key: WideString): boolean;
   protected
     function Get_Item(const Key: WideString): OleVariant; safecall;
     procedure Set_Item(const Key: WideString; Value: OleVariant); safecall;
@@ -144,7 +144,7 @@ begin
   raise EInvalidOperation.Create('Not implemented');
 end;
 
-function TBSONDocument.GetKeyIndex(Key: WideString):boolean;
+function TBSONDocument.GetKeyIndex(const Key: WideString):boolean;
 var
   a,b,c,d,x:integer;
 begin
@@ -230,9 +230,11 @@ var
     l:integer;
   begin
     OleCheck(stm.Read(p,s,@l));
-    if l<>s then raise EBSONException.Create('Unexpected end of stream');
+    if l<>s then
+      raise EBSONException.Create('Unexpected end of stream');
     inc(ltotal,s);
-    if ltotal>ltmax then raise EBSONException.Create('More BSON data than declared');
+    if ltotal>ltmax then
+      raise EBSONException.Create('More BSON data than declared');
   end;
   function stmReadCString:WideString;
   var
@@ -271,7 +273,8 @@ var
     //read closing null
     l:=0;
     stmRead(@l,1);
-    if l<>0 then raise EBSONException.Create('BSON string incorrectly terminated at offset '+IntToHex(lstart,8));
+    if l<>0 then
+      raise EBSONException.Create('BSON string incorrectly terminated at offset '+IntToHex(lstart,8));
     Result:=UTF8Decode(s);
   end;
   {$IFDEF BSON_SUPPORT_REGEX}
@@ -365,12 +368,14 @@ begin
           Set_Item(vstack[vindex].vkey,v)
         else
          begin
-          if vstack[vindex].vi=vstack[vindex].vl then
+          i:=vindex-1;
+          if vstack[i].vi=vstack[i].vl then
            begin
-            inc(vstack[vindex].vl,vstackValuesGrowStep);//growstep
-            SetLength(vstack[vindex].vv,vstack[vindex].vl);
+            inc(vstack[i].vl,vstackValuesGrowStep);//growstep
+            SetLength(vstack[i].vv,vstack[i].vl);
            end;
-          vstack[vindex-1].vv[vstack[vindex-1].vi]:=v;
+          vstack[i].vv[vstack[i].vi]:=v;
+          inc(vstack[i].vi);
          end;
         //pop from array stack
         SetLength(vstack[vindex].vv,0);
@@ -429,7 +434,9 @@ begin
              end;
             bsonBinaryUUID:
              begin
-              if i<>16 then raise EBSONException.Create('Unexpected UUID length ('+IntToStr(i)+') at offset '+IntToHex(lstart,8));
+              if i<>16 then
+                raise EBSONException.Create('Unexpected UUID length ('+
+                  IntToStr(i)+') at offset '+IntToHex(lstart,8));
               stmRead(@gg,16);
               //TODO try to rig into varStrArg
               v:=GUIDToString(gg);
@@ -439,7 +446,9 @@ begin
               //TODO
               raise EInvalidOperation.Create('Not Implemented');
              end;
-            else raise EBSONException.Create('Unknown BSON binary type '+IntToHex(o[11],2)+' at offset '+IntToHex(lstart,8));
+            else
+              raise EBSONException.Create('Unknown BSON binary type '+
+                IntToHex(o[11],2)+' at offset '+IntToHex(lstart,8));
           end;
          end;
         bsonObjectID:
@@ -502,7 +511,9 @@ begin
           stmRead(@ii,8);
           v:=ii;
          end;
-        else raise EBSONException.Create('Unknown BSON element type '+IntToHex(i,2)+' at offset '+IntToHex(lstart,8));
+        else
+          raise EBSONException.Create('Unknown BSON element type '+
+            IntToHex(i,2)+' at offset '+IntToHex(lstart,8));
       end;
       //add the element
       if vindex=-1 then
@@ -517,7 +528,8 @@ begin
             inc(vstack[vindex].vl,vstackValuesGrowStep);//growstep
             SetLength(vstack[vindex].vv,vstack[vindex].vl);
            end;
-          if k<>IntToStr(vstack[vindex].vi) then raise EBSONException.Create('Unexpected BSON array index key: "'+k+'"<>"'+
+          if k<>IntToStr(vstack[vindex].vi) then
+            raise EBSONException.Create('Unexpected BSON array index key: "'+k+'"<>"'+
               IntToStr(vstack[vindex].vi)+'" at offset '+IntToHex(lstart,8));
           vstack[vindex].vv[vstack[vindex].vi]:=v;
           if BSONDetectVarArrayType then
@@ -547,7 +559,7 @@ var
     if l<>s then raise EBSONException.Create('Failed to write data to stream');
     inc(ltotal,s);
   end;
-  procedure stmWriteCString(s:WideString);
+  procedure stmWriteCString(const s:WideString);
   var
     sx:UTF8String;
     sl:integer;
@@ -560,7 +572,7 @@ var
     else
       stmWrite(@sx[1],sl+1);
   end;
-  procedure stmWriteString(s:WideString);
+  procedure stmWriteString(const s:WideString);
   var
     sx:UTF8String;
     sl:integer;
@@ -686,7 +698,7 @@ var
       OleCheck(stm.Seek(0,soFromBeginning,jj));
      end;
   end;
-  function StartsWith(a,b:WideString):boolean;
+  function StartsWith(const a,b:WideString):boolean;
   var
     i,l1,l2:integer;
   begin

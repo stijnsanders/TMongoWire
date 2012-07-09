@@ -13,10 +13,10 @@ type
     Fsize,FchunkSize,FchunkIndex,FchunkPos:integer;
     procedure InitData;
   public
-    constructor Create(db:TMongoWire;prefix:WideString;id:OleVariant); overload;
-    constructor Create(db:TMongoWire;prefix:WideString;filequery:IBSONDocument); overload;
+    constructor Create(db:TMongoWire;const prefix:WideString;id:OleVariant); overload;
+    constructor Create(db:TMongoWire;const prefix:WideString;filequery:IBSONDocument); overload;
     class function Add(db:TMongoWire;prefix:WideString;stream:TStream;info:IBSONDocument):OleVariant; overload;
-    class function Add(db:TMongoWire;prefix,filepath:WideString):OleVariant; overload;
+    class function Add(db:TMongoWire;const prefix,filepath:WideString):OleVariant; overload;
     function Read(var Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
     procedure SetSize(NewSize: Longint); override;
@@ -51,7 +51,8 @@ end;
 
 { TMongoStream }
 
-constructor TMongoStream.Create(db: TMongoWire; prefix: WideString; id: OleVariant);
+constructor TMongoStream.Create(db: TMongoWire; const prefix: WideString;
+  id: OleVariant);
 begin
   inherited Create;
   Fdb:=db;//assert Fdb.Connected
@@ -61,7 +62,7 @@ begin
   InitData;
 end;
 
-constructor TMongoStream.Create(db: TMongoWire; prefix: WideString;
+constructor TMongoStream.Create(db: TMongoWire; const prefix: WideString;
   filequery: IBSONDocument);
 begin
   inherited Create;
@@ -231,7 +232,7 @@ begin
    end;
 end;
 
-class function TMongoStream.Add(db: TMongoWire; prefix,
+class function TMongoStream.Add(db: TMongoWire; const prefix,
   filepath: WideString): OleVariant;
 var
   f:TFileStream;

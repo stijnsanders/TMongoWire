@@ -7,8 +7,8 @@ uses SysUtils, mongoWire;
 function MD5Hash(x:UTF8String):UTF8String;
 
 procedure MongoWireAuthenticate(MongoWire:TMongoWire;
-  Collection,UserName,Password:WideString);
-procedure MongoWireLogout(MongoWire:TMongoWire;Collection:WideString);
+  const Collection,UserName,Password:WideString);
+procedure MongoWireLogout(MongoWire:TMongoWire;const Collection:WideString);
 
 type
   EMongoAuthenticationFailed=class(EMongoException);
@@ -133,7 +133,7 @@ begin
 end;
 
 procedure MongoWireAuthenticate(MongoWire:TMongoWire;
-  Collection,UserName,Password:WideString);
+  const Collection,UserName,Password:WideString);
 var
   nonce:WideString;
 begin
@@ -149,7 +149,7 @@ begin
       'MongoWire: failed to authenticate to "'+Collection+'" as "'+UserName+'"');
 end;
 
-procedure MongoWireLogout(MongoWire:TMongoWire;Collection:WideString);
+procedure MongoWireLogout(MongoWire:TMongoWire;const Collection:WideString);
 begin
   if MongoWire.Get(Collection+'.$cmd',BSON(['logout',1]))['ok']<>1 then
     raise EMongoException.Create('MongoWire: logout failed');
