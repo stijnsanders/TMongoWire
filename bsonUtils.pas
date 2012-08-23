@@ -286,7 +286,7 @@ var
   end;
   procedure GetStringIndexes(var i1,i2:integer);
   begin
-    inc(i);
+    inc(i);                                                    
     i1:=i;
     while (i<=l) and (jsonData[i]<>'"') do
      begin
@@ -449,6 +449,7 @@ begin
         Expect('"','JSON key string not enclosed in double quotes');
         GetStringIndexes(k1,k2);
         {$ELSE}
+        if jsonData[i]='"' then inc(i);
         k1:=i;
         while (i<=l) and (jsonData[i]>' ') and
           (jsonData[i]<>':') and (jsonData[i]<>'"') do
@@ -457,6 +458,7 @@ begin
           inc(i);
          end;
         k2:=i;
+        if jsonData[i]='"' then inc(i);        
         {$ENDIF}
         Expect(':','JSON key, value not separated by colon');
        end;
@@ -549,6 +551,7 @@ begin
            end;
           if char(jsonData[i]) in ['.','e','E'] then
            begin
+            inc(i);
             //float
             while (i<=l) and (char(jsonData[i]) in
               ['0'..'9','-','+','e','E']) do inc(i);
