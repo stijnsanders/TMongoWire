@@ -449,14 +449,13 @@ begin
         Expect('"','JSON key string not enclosed in double quotes');
         GetStringIndexes(k1,k2);
         {$ELSE}
-        k1:=i;
-        while (i<=l) and (jsonData[i]>' ') and
-          (jsonData[i]<>':') and (jsonData[i]<>'"') do
+        if SkipWhiteSpace='"' then GetStringIndexes(k1,k2) else
          begin
-          if jsonData[i]='\' then inc(i);//just skip all to skip any '"'
-          inc(i);
+          k1:=i;
+          while (i<=l) and (jsonData[i]>' ') and
+            (jsonData[i]<>':') and (jsonData[i]<>'"') do inc(i);
+          k2:=i;
          end;
-        k2:=i;
         {$ENDIF}
         Expect(':','JSON key, value not separated by colon');
        end;
@@ -550,6 +549,7 @@ begin
           if char(jsonData[i]) in ['.','e','E'] then
            begin
             //float
+            inc(i);
             while (i<=l) and (char(jsonData[i]) in
               ['0'..'9','-','+','e','E']) do inc(i);
             //try except EConvertError?
