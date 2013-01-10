@@ -407,7 +407,7 @@ begin
           vstack[vindex].vi:=-1;
           vstack[vindex].vl:=0;
           vstack[vindex].vstart:=ltotal;
-          vstack[vindex].vt:=varVariant;
+          vstack[vindex].vt:=varVariant;//default, see BSONDetectVarArrayType below
           stmRead(@vstack[vindex].vlength,4);//array document length
          end;
         bsonBinary:

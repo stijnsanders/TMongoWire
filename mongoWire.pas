@@ -122,7 +122,7 @@ const
   OP_DELETE       = 2006;
   OP_KILL_CURSORS = 2007;
 
-  MongoWideStartDataSize=$10000;
+  MongoWireStartDataSize=$10000;
 
 type
   TMongoWireMsgHeader=packed record
@@ -147,7 +147,7 @@ begin
   inherited Create;
   FSocket:=TTcpClient.Create(nil);
   m:=TMemoryStream.Create;
-  m.Size:=MongoWideStartDataSize;//start keeping some data
+  m.Size:=MongoWireStartDataSize;//start keeping some data
   FData:=TStreamAdapter.Create(m,soOwned);
   FWriteLock:=TCriticalSection.Create;
   FReadLock:=TCriticalSection.Create;
@@ -544,7 +544,7 @@ begin
   FOwner:=MongoWire;
   //TODO: register for invalidation on owner's TMongoWire.Destroy
   m:=TMemoryStream.Create;
-  m.Size:=MongoWideStartDataSize;//start keeping some data
+  m.Size:=MongoWireStartDataSize;//start keeping some data
   FData:=TStreamAdapter.Create(m,soOwned);
   FNumberToReturn:=0;//use db default
   FNumberToSkip:=0;
