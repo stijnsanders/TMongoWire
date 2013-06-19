@@ -20,11 +20,6 @@ uses
 
 function MD5Hash(x:UTF8String):UTF8String;
 const
-  tailMD5:Utf8String=#$80#0#0#0#0+
-    #0#0#0#0#0#0#0#0#0#0#0#0#0#0#0#0+
-    #0#0#0#0#0#0#0#0#0#0#0#0#0#0#0#0+
-    #0#0#0#0#0#0#0#0#0#0#0#0#0#0#0#0+
-    #0#0#0#0#0#0#0#0#0#0#0#0#0#0#0#0;
   roll1:array[0..3] of cardinal=(7,12,17,22);
   roll2:array[0..3] of cardinal=(5,9,14,20);
   roll3:array[0..3] of cardinal=(4,11,16,23);
@@ -52,7 +47,7 @@ const
   hex:array[0..15] of AnsiChar='0123456789abcdef';
 var
   a:cardinal;
-  b,dl,i,j,k,l:integer;
+  dl,i,j,k,l:integer;
   d:array of cardinal;
   g,h:array[0..3] of cardinal;
 begin
@@ -60,11 +55,18 @@ begin
   a:=Length(x);
   dl:=a+9;
   if (dl and $3F)<>0 then dl:=(dl and $FFC0)+$40;
-  b:=dl;
+  i:=dl;
   dl:=dl shr 2;
   SetLength(d,dl);
-  x:=x+tailMD5;
-  Move(x[1],d[0],b);
+  SetLength(x,i);
+  j:=a+1;
+  x[j]:=#$80;
+  while j<i do
+   begin
+    inc(j);
+    x[j]:=#0;
+   end;
+  Move(x[1],d[0],i);
   d[dl-2]:=a shl 3;
   h[0]:=$67452301;
   h[1]:=$efcdab89;
