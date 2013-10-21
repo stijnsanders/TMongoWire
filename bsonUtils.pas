@@ -129,7 +129,7 @@ begin
   stack[stackIndex].isDoc:=true;
   Result:='';//TODO: TStringBuilder
 
-  {$if CompilerVersion >= 17}
+  {$if CompilerVersion >= 24}
   ods:= FormatSettings.DecimalSeparator;
   {$else}
   ods:=DecimalSeparator;
@@ -137,7 +137,7 @@ begin
 
   try
 
-    {$if CompilerVersion >= 17}
+    {$if CompilerVersion >= 24}
     FormatSettings.DecimalSeparator:='.';
     {$else}
     DecimalSeparator:='.';
@@ -248,7 +248,7 @@ begin
      end;
   finally
 
-    {$if CompilerVersion >= 17}
+    {$if CompilerVersion >= 24}
     FormatSettings.DecimalSeparator:=ods;
     {$else}
     DecimalSeparator:=ods;
@@ -452,7 +452,7 @@ begin
   InObjectOrArray:=true;
   firstItem:=true;
 
-  {$if CompilerVersion >= 17}
+  {$if CompilerVersion >= 24}
   ods:= FormatSettings.DecimalSeparator;
   {$else}
   ods:=DecimalSeparator;
@@ -460,7 +460,7 @@ begin
 
   try
 
-    {$if CompilerVersion >= 17}
+    {$if CompilerVersion >= 24}
     FormatSettings.DecimalSeparator:='.';
     {$else}
     DecimalSeparator:='.';
@@ -677,7 +677,7 @@ begin
       'JSON with '+IntToStr(stackIndex+1)+' objects or arrays not closed');
   finally
 
-    {$if CompilerVersion >= 17}
+    {$if CompilerVersion >= 24}
     FormatSettings.DecimalSeparator:=ods;
     {$else}
     DecimalSeparator:=ods;
