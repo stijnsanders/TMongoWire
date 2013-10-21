@@ -128,9 +128,21 @@ begin
   stack[stackIndex].al:=VarArrayHighBound(stack[stackIndex].a,1)+1;
   stack[stackIndex].isDoc:=true;
   Result:='';//TODO: TStringBuilder
+
+  {$if CompilerVersion >= 17}
+  ods:= FormatSettings.DecimalSeparator;
+  {$else}
   ods:=DecimalSeparator;
+  {$ifend}
+
   try
+
+    {$if CompilerVersion >= 17}
+    FormatSettings.DecimalSeparator:='.';
+    {$else}
     DecimalSeparator:='.';
+    {$ifend}
+
     firstItem:=true;
     Result:=Result+'{';
     while stackIndex<>-1 do
@@ -235,7 +247,13 @@ begin
        end;
      end;
   finally
+
+    {$if CompilerVersion >= 17}
+    FormatSettings.DecimalSeparator:=ods;
+    {$else}
     DecimalSeparator:=ods;
+    {$ifend}
+
   end;
 end;
 
@@ -433,9 +451,21 @@ begin
   al:=0;
   InObjectOrArray:=true;
   firstItem:=true;
+
+  {$if CompilerVersion >= 17}
+  ods:= FormatSettings.DecimalSeparator;
+  {$else}
   ods:=DecimalSeparator;
+  {$ifend}
+
   try
+
+    {$if CompilerVersion >= 17}
+    FormatSettings.DecimalSeparator:='.';
+    {$else}
     DecimalSeparator:='.';
+    {$ifend}
+
     d:=doc;
     //main loop over key/values and nested objects/arrays
     while (i<=l) and (stackIndex<>-1) do
@@ -646,7 +676,13 @@ begin
     if stackIndex<>-1 then raise EJsonDecodeException.Create(
       'JSON with '+IntToStr(stackIndex+1)+' objects or arrays not closed');
   finally
+
+    {$if CompilerVersion >= 17}
+    FormatSettings.DecimalSeparator:=ods;
+    {$else}
     DecimalSeparator:=ods;
+    {$ifend}
+
   end;
 end;
 
