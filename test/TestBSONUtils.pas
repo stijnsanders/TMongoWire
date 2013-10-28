@@ -1,42 +1,44 @@
+// Test methods bsonUtils.pas
 unit TestBSONUtils;
 
 interface
 
 uses
-  Dialogs,
   TestFramework,
-
   bsonDoc,
   bsonUtils;
 
 type
-
-  ///
-  /// Include JSON data format entre {* *} in sample JSON bacauuse comflit with { } coments DElphi
-  ///
-
-  // test methods bsonUtils.pas
-  TTestBSONUtils = class(TTestCase)
+  TTestBSONUtils_BsonToJson = class(TTestCase)
   private
     d: IBSONDocument;
     JSON: string;
   published
-    procedure TestBasic();
+    procedure TestBsonToJsonBasicStructure();
 
-    procedure Test02();
-    procedure Test03();
-    procedure Test04();
-    procedure Test05();
+    procedure TestBsonToJsonComplex02();
+    procedure TestBsonToJsonComplex03();
+    procedure TestBsonToJsonComplex04();
+    procedure TestBsonToJsonComplex05();
+    procedure TestBsonToJsonComplex06();
+    procedure TestBsonToJsonComplex07();
   end;
+
+  TTestBSONUtils_JsonToBson = class(TTestCase)
+  end;
+  TTestBSONUtils_JsonIntoBson = class(TTestCase)
+  end;
+
 
 implementation
 
 uses
-  Variants;
+  Variants,
+  SysUtils;
 
 { TTestBSONUtils }
 
-procedure TTestBSONUtils.Test02;
+procedure TTestBSONUtils_BsonToJson.TestBsonToJsonComplex02;
 begin
   d:= BSON([
     'Company','XYZ Company',
@@ -57,7 +59,7 @@ begin
   CheckEqualsString( JSON, BsonToJson( d ) );
 end;
 
-procedure TTestBSONUtils.Test03;
+procedure TTestBSONUtils_BsonToJson.TestBsonToJsonComplex03;
 begin
   d:= BSON([ 'movies' ,
     VarArrayOf( [
@@ -83,7 +85,7 @@ begin
 
 end;
 
-procedure TTestBSONUtils.Test04;
+procedure TTestBSONUtils_BsonToJson.TestBsonToJsonComplex04;
 begin
   d:=BSON([
     'Name', 'Johni',
@@ -99,7 +101,7 @@ begin
 
 end;
 
-procedure TTestBSONUtils.Test05;
+procedure TTestBSONUtils_BsonToJson.TestBsonToJsonComplex05;
 begin
 
   d := BSON([
@@ -129,49 +131,97 @@ begin
 
 end;
 
-procedure TTestBSONUtils.TestBasic;
+procedure TTestBSONUtils_BsonToJson.TestBsonToJsonBasicStructure;
 begin
-  d := BSON(['name', 'Johni Douglas Marangon', 'address',
-    'Maravilia - Santa Catarina - Brazil', 'phone', 4895959859]);
+  d :=
+    BSON([
+      'Name', 'Johni Douglas Marangon',
+      'Phone', 4912345678,
+      'Sex' , 'M',
+      'BirthDate', StrToDate( '28/06/1986' ),
+      'Registered', True
+    ]);
 
   JSON :=
-    '{"name":"Johni Douglas Marangon","address":"Maravilia - Santa Catarina - Brazil","phone":4895959859}';
+    '{' +
+      '"Name":"Johni Douglas Marangon",' +
+      '"Phone":4912345678,' +
+      '"Sex":"M",' +
+      '"BirthDate":"1986-06-28T00:00:00.000",' +
+      '"Registered":true' +
+
+    '}';
 
   CheckEqualsString(JSON, BsonToJson(d));
 
+end;
 
 
-  (*
+procedure TTestBSONUtils_BsonToJson.TestBsonToJsonComplex07;
+begin
+  d:= BSON([
+     'test',
+      VarArrayOf([
+        BSON ([ 'category', 'PHP', 'result', VarArrayOf( [ BSON([ 'name' ,'One', 'score', 90 ]), BSON([ 'name' ,'Two', 'score', 75 ]) ] ) ] ),
+        BSON ([ 'category', 'Delphi', 'result', VarArrayOf( [ BSON([ 'name' ,'One', 'score', 96 ]), BSON([ 'name' ,'Two', 'score', 52 ]) ] ) ] ),
+        BSON ([ 'category', 'Java', 'result', VarArrayOf( [ BSON([ 'name' ,'One', 'score', 74 ]), BSON([ 'name' ,'Two', 'score', 49 ]) ] ) ] )
+      ])
+  ]);
 
-    "skills": [
-    {
-    "category": "PHP",
-    "tests": [
-    { "name": "One", "score": 90 },
-    { "name": "Two", "score": 96 }
-    ]
-    },
-    {
-    "category": "CouchDB",
-    "tests": [
-    { "name": "One", "score": 32 },
-    { "name": "Two", "score": 84 }
-    ]
-    },
-    {
-    "category": "Node.js",
-    "tests": [
-    { "name": "One", "score": 97 },
-    { "name": "Two", "score": 93 }
-    ]
-    }
-    ]
-    }
-*)
+JSON:=
+  '{'+
+    '"test":[' +
+     '{"category":"PHP",' +
+            '"result":[{"name":"One","score":90},' +
+                      '{"name":"Two","score":75}]},' +
+     '{"category":"Delphi",' +
+            '"result":[{"name":"One","score":96},' +
+                      '{"name":"Two","score":52}]},' +
+     '{"category":"Java",'+
+            '"result":[{"name":"One","score":74},' +
+                      '{"name":"Two","score":49}]}' +
+    ']' +
+  '}';
+
+  CheckEqualsString( JSON, BsonToJson( d ) );
+
+end;
+
+procedure TTestBSONUtils_BsonToJson.TestBsonToJsonComplex06;
+begin
+  d:= BSON( [
+    'menu',
+     BSON(
+       [ 'header' ,'Viewer' ,
+         'itens',  VarArrayOf([
+             BSON([ 'id', 'Open' ]),
+             BSON([ 'id', 'OpenNew', 'label', 'Open New' ]),
+             BSON([ 'id', 'ZoonIn', 'label',  'Zoon In' , 'position', 10 ])
+         ])
+     ])
+  ]);
+
+  JSON:=
+    '{"menu":{"header":"Viewer",' +
+     '"itens":[' +
+       '{"id":"Open"},' +
+       '{"id":"OpenNew","label":"Open New"},' +
+       '{"id":"ZoonIn","label":"Zoon In","position":10}' +
+     ']'+
+   '}}';
+
+   CheckEqualsString( JSON, BsonToJson( d ) );
+
 end;
 
 initialization
 
-RegisterTest(TTestBSONUtils.Suite);
+RegisterTest(TTestBSONUtils_BsonToJson.Suite);
 
 end.
+
+
+
+
+
+
