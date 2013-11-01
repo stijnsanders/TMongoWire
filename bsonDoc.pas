@@ -320,7 +320,7 @@ var
   j:integer;
   v:OleVariant;
   k:WideString;
-  o:array[0..11] of byte;
+  o:array[0..15] of byte;
   ii:int64 absolute o;
   dd:double absolute o;
   pp:pointer absolute o;
@@ -713,8 +713,8 @@ var
   w:WideString;
   i,j,wl:integer;
   v:OleVariant;
-  ii:int64;
-  o:array[0..11] of byte;
+  o:array[0..15] of byte;
+  ii:int64 absolute o;
   gg:TGUID absolute o;
   dd:double absolute o;
   pp:pointer absolute o;
