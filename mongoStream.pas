@@ -25,16 +25,10 @@ type
     procedure SaveToFile(const FileName: string);
   end;
 
-implementation
-
-uses SysUtils, Variants, mongoID;
-
 const
   //do not localize
-  mongoStreamDefaultPrefix='fs';
-  mongoStreamFilesCollection='.files';
-  mongoStreamChunksCollection='.chunks';
-  mongoStreamDefaultChunkSize=$40000;//256KB
+  mongoStreamFilesSuffix='.files';
+  mongoStreamChunksSuffix='.chunks';
   mongoStreamIDField='_id';
   mongoStreamLengthField='length';
   mongoStreamChunkSizeField='chunkSize';
@@ -43,6 +37,15 @@ const
   mongoStreamDataField='data';
   mongoStreamFileNameField='filename';
   mongoStreamUploadDateField='uploadDate';
+
+implementation
+
+uses SysUtils, Variants, mongoID;
+
+const
+  //do not localize
+  mongoStreamDefaultPrefix='fs';
+  mongoStreamDefaultChunkSize=$40000;//256KB
 
 function IsNull(x,def:OleVariant):OleVariant;
 begin
@@ -58,7 +61,7 @@ begin
   Fdb:=db;//assert Fdb.Connected
   Fprefix:=prefix;
   if Fprefix='' then Fprefix:=mongoStreamDefaultPrefix;
-  Fdata:=Fdb.Get(Fprefix+mongoStreamFilesCollection,BSON([mongoStreamIDField,id]));
+  Fdata:=Fdb.Get(Fprefix+mongoStreamFilesSuffix,BSON([mongoStreamIDField,id]));
   InitData;
 end;
 
@@ -69,7 +72,7 @@ begin
   Fdb:=db;//assert Fdb.Connected
   Fprefix:=prefix;
   if Fprefix='' then Fprefix:=mongoStreamDefaultPrefix;
-  Fdata:=Fdb.Get(Fprefix+mongoStreamFilesCollection,filequery);
+  Fdata:=Fdb.Get(Fprefix+mongoStreamFilesSuffix,filequery);
   InitData;
 end;
 
@@ -103,7 +106,7 @@ var
   v:OleVariant;
   p:PAnsiChar;
 begin
-  if Fchunk=nil then Fchunk:=Fdb.Get(Fprefix+mongoStreamChunksCollection,BSON([
+  if Fchunk=nil then Fchunk:=Fdb.Get(Fprefix+mongoStreamChunksSuffix,BSON([
     mongoStreamFilesIDField,Fdata[mongoStreamIDField],
     mongoStreamNField,FchunkIndex
   ]));
@@ -151,7 +154,7 @@ begin
    begin
     //TODO: reuse any Fchunk already fetched?
     if p<FchunkSize then s:=p else s:=FchunkSize;
-    v:=Fdb.Get(Fprefix+mongoStreamChunksCollection,BSON([
+    v:=Fdb.Get(Fprefix+mongoStreamChunksSuffix,BSON([
       mongoStreamFilesIDField,Fdata[mongoStreamIDField],
       mongoStreamNField,i
     ]))[mongoStreamDataField];
@@ -205,7 +208,7 @@ begin
   info[mongoStreamUploadDateField]:=VarFromDateTime(Now);
   //TODO: 'md5'?
   //assert db.Connected
-  db.Insert(prefix+mongoStreamFilesCollection,info);
+  db.Insert(prefix+mongoStreamFilesSuffix,info);
   stream.Position:=0;//?
   v:=VarArrayCreate([0,chunkSize-1],varByte);
   l:=chunkSize;
@@ -222,7 +225,7 @@ begin
     if l<>0 then
      begin
       if l<>chunkSize then VarArrayRedim(v,l);//assert last read from stream!
-      db.Insert(prefix+mongoStreamChunksCollection,BSON([
+      db.Insert(prefix+mongoStreamChunksSuffix,BSON([
         mongoStreamFilesIDField,Result,
         mongoStreamNField,i,
         mongoStreamDataField,v

@@ -49,7 +49,7 @@ begin
   FDB.Open;//TODO: from ParamStr? from ini? registry?
 
   q:=TMongoWireQuery.Create(FDB);
-  q.Query(FilesCollection+'.files',BSON);
+  q.Query(FilesCollection+mongoStreamFilesSuffix,BSON);
 
   ListView1.Items.BeginUpdate;
   try
@@ -133,7 +133,10 @@ begin
     if MessageBox(Handle,PChar('Are you sure to delete "'+li.Caption+'"?'),
       'mwx2',MB_OKCANCEL or MB_ICONQUESTION)=idOK then
      begin
-      FDB.Delete(FilesCollection+'.files',BSON(['_id',li.SubItems[siID]]));
+      FDB.Delete(FilesCollection+mongoStreamFilesSuffix,
+        BSON([mongoStreamIDField,li.SubItems[siID]]));
+      FDB.Delete(FilesCollection+mongoStreamChunksSuffix,
+        BSON([mongoStreamFilesIDField,li.SubItems[siID]]));
       li.Delete;
      end;
 end;
