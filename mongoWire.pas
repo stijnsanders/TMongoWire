@@ -149,6 +149,7 @@ begin
   m:=TMemoryStream.Create;
   m.Size:=MongoWireStartDataSize;//start keeping some data
   FData:=TStreamAdapter.Create(m,soOwned);
+  (FData as IUnknown)._AddRef;
   FWriteLock:=TCriticalSection.Create;
   FReadLock:=TCriticalSection.Create;
   FRequestIndex:=1;
@@ -157,7 +158,7 @@ end;
 destructor TMongoWire.Destroy;
 begin
   FSocket.Free;
-  FData.Free;
+  (FData as IUnknown)._Release;//FData.Free;
   FWriteLock.Free;
   FReadLock.Free;
   inherited;
@@ -546,6 +547,7 @@ begin
   m:=TMemoryStream.Create;
   m.Size:=MongoWireStartDataSize;//start keeping some data
   FData:=TStreamAdapter.Create(m,soOwned);
+  (FData as IUnknown)._AddRef;
   FNumberToReturn:=0;//use db default
   FNumberToSkip:=0;
   FPageIndex:=0;
@@ -557,7 +559,7 @@ destructor TMongoWireQuery.Destroy;
 begin
   KillCursor;
   FOwner:=nil;//TODO: unregister
-  FData.Free;
+  (FData as IUnknown)._Release;//FData.Free;
   inherited;
 end;
 

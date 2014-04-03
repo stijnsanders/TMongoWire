@@ -36,15 +36,20 @@ const
   bsonBinaryMD5 = $00000005;
   bsonBinaryUserDefined = $00000006;
 
-  IID_IBSONDocument : TGUID = '{42534F4E-0000-0001-C000-000000000001}';
-  CLASS_BSONDocument : TGUID = '{42534F4E-0000-0002-C000-000000000002}';
-
   //special prefix with unassigned(?) unicode symbols from the Special range
   bsonJavaScriptCodePrefix:WideString=#$FFF1'bsonJavaScriptCode'#$FFF2;
   bsonRegExPrefix:WideString=#$FFF1'bsonRegEx'#$FFF2;
   bsonObjectIDPrefix:WideString='ObjectID("';
   bsonObjectIDSuffix:WideString='")';
   bsonObjectID_L=36;//=Length(bsonObjectIDPrefix)+24+Length(bsonObjectIDSuffix);
+
+  //COM GUID's
+  IID_IBSONDocument
+    : TGUID = '{42534F4E-0000-0001-C000-000000000001}';
+  CLASS_BSONDocument
+    : TGUID = '{42534F4E-0000-0002-C000-000000000002}';
+  IID_IBSONDocumentEnumerator
+    : TGUID = '{42534F4E-0000-0003-C000-000000000003}';
 
 type
   IBSONDocument = interface(IUnknown)
@@ -64,11 +69,11 @@ type
     FDirty:boolean;
     FElementIndex,FElementSize:integer;
     FElements:array of record
+      SortIndex,LoadIndex:integer;
       Key:WideString;
       Value:OleVariant;
     end;
-    FSorted:array of integer;
-    FGotIndex,FGotSorted:integer;
+    FLoadIndex,FGotIndex,FGotSorted:integer;
     FGotMatch:boolean;
     function GetKeyIndex(const Key: WideString): boolean;
   protected
@@ -84,7 +89,6 @@ type
     function Save(const stm: IStream; fClearDirty: BOOL): HResult; stdcall;
     function ToVarArray:OleVariant; safecall;
     procedure Clear; safecall;
-    //TODO: function toJSON:WideString;
     property Item[const Key: WideString]: OleVariant read Get_Item write Set_Item; default;
   end;
 
@@ -103,8 +107,40 @@ type
       ']'
     ]);
 }
-function BSON:IBSONDocument; overload;
-function BSON(x:array of OleVariant):IBSONDocument; overload;
+function BSON: IBSONDocument; overload;
+function BSON(x: array of OleVariant): IBSONDocument; overload;
+
+type
+  IBSONDocumentEnumerator = interface(IUnknown)
+    ['{42534F4E-0000-0003-C000-000000000003}']
+    procedure SetStream(const stm: IStream); stdcall;
+    procedure Add(pos: int64); stdcall;
+    function GetCount: integer; stdcall;
+    function Next(const doc: IBSONDocument): boolean; stdcall;
+    procedure Skip(n: integer); safecall;
+    procedure Reset; safecall;
+    property Count: integer read GetCount;
+  end;
+
+  TBSONDocumentEnumerator = class(TInterfacedObject,
+    IBSONDocumentEnumerator)//IPersistStream?
+  private
+    FData:IStream;
+    FPos:array of int64;
+    FPosIndex,FPosSize,FPosCurrent:integer;
+  public
+    procedure AfterConstruction; override;
+    destructor Destroy; override;
+    procedure SetStream(const stm: IStream); stdcall;
+    function GetCount: integer; stdcall;
+    procedure Add(pos: int64); stdcall;
+    //Save?Dirty?
+    function Next(const doc: IBSONDocument): boolean; stdcall;
+    procedure Skip(n: integer); safecall;
+    procedure Reset; safecall;
+  end;
+
+function BSONEnum: IBSONDocumentEnumerator;
 
 implementation
 
@@ -128,6 +164,7 @@ begin
   FGotIndex:=0;
   FGotSorted:=0;
   FGotMatch:=false;
+  FLoadIndex:=0;
 end;
 
 destructor TBSONDocument.Destroy;
@@ -164,7 +201,7 @@ begin
     while b>=a do
      begin
       c:=(a+b) div 2;
-      d:=FSorted[c];
+      d:=FElements[c].SortIndex;
       //if c=a? c=b?
       x:=CompareStr(Key,FElements[d].Key);
       if x=0 then
@@ -187,7 +224,10 @@ end;
 
 function TBSONDocument.Get_Item(const Key: WideString): OleVariant;
 begin
-  if GetKeyIndex(Key) then Result:=FElements[FGotIndex].Value else Result:=Null;
+  if GetKeyIndex(Key) and (FElements[FGotIndex].LoadIndex=FLoadIndex) then
+    Result:=FElements[FGotIndex].Value
+  else
+    Result:=Null;
 end;
 
 procedure TBSONDocument.Set_Item(const Key: WideString; Value: OleVariant);
@@ -204,12 +244,13 @@ begin
      begin
       inc(FElementSize,GrowStep);
       SetLength(FElements,FElementSize);
-      SetLength(FSorted,FElementSize);
      end;
-    for i:=FElementIndex-1 downto FGotSorted do FSorted[i+1]:=FSorted[i];//Move?
+    for i:=FElementIndex-1 downto FGotSorted do
+      FElements[i+1].SortIndex:=FElements[i].SortIndex;
     FGotIndex:=FElementIndex;
     inc(FElementIndex);
-    FSorted[FGotSorted]:=FGotIndex;
+    FElements[FGotSorted].SortIndex:=FGotIndex;
+    FElements[FGotIndex].LoadIndex:=FLoadIndex;
     FElements[FGotIndex].Key:=Key;
    end;
   FElements[FGotIndex].Value:=Value;
@@ -236,30 +277,29 @@ var
     if ltotal>ltmax then
       raise EBSONException.Create('More BSON data than declared');
   end;
-  function stmReadCString:WideString;
+var //outside of stmReadCString to recycle memory
+  ss:AnsiString;
+  sx,sl:integer;
+  function stmReadCString: WideString;
   var
     c:AnsiChar;
-    s:AnsiString;
-    sx,sl:integer;
   begin
     sx:=0;
-    sl:=0;
     stmRead(@c,1);
     while c<>#0 do
      begin
       if sx=sl then
        begin
-        inc(sl,$100);//GrowStep
-        SetLength(s,sl);
+        inc(sl,$100);//grow in steps
+        SetLength(ss,sl);
        end;
       inc(sx);
-      s[sx]:=c;
+      ss[sx]:=c;
       stmRead(@c,1);
      end;
-    SetLength(s,sx);
-    Result:=UTF8Decode(s);
+    Result:=UTF8Decode(Copy(ss,1,sx));
   end;
-  function stmReadString:WideString;
+  function stmReadString: WideString;
   var
     l:integer;
     s:AnsiString;
@@ -278,7 +318,7 @@ var
     Result:=UTF8Decode(s);
   end;
   {$IFDEF BSON_SUPPORT_REGEX}
-  function stmReadRegEx:IRegExp2;
+  function stmReadRegEx: IRegExp2;
   var
     i:integer;
     s:string;
@@ -299,22 +339,66 @@ var
       end;
   end;
   {$ENDIF}
-  function stmReadBSONDocument:IBSONDocument;
+  function stmReadBSONDocument(ReuseDoc:boolean; var vv:OleVariant): boolean;
   var
     p1,p2:int64;
     d:TBSONDocument;
+    dd:IBSONDocument;
   begin
     OleCheck(stm.Seek(0,soFromCurrent,p1));
-    d:=TBSONDocument.Create;
-    try
-      d.Load(stm);
-      Result:=(d as IBSONDocument);
-    except //not finally!
-      d.Free;
-      raise;
-    end;
+    if ReuseDoc and (VarType(FElements[FGotIndex].Value)=varUnknown) and
+      (IUnknown(FElements[FGotIndex].Value).QueryInterface(IID_IBSONDocument,dd)=S_OK) then
+     begin
+      (dd as IPersistStream).Load(stm);
+      Result:=true;
+     end
+    else
+     begin
+      d:=TBSONDocument.Create;
+      try
+        d.Load(stm);
+        vv:=(d as IBSONDocument);
+      except //not finally!
+        d.Free;
+        raise;
+      end;
+      Result:=false;
+     end;
     OleCheck(stm.Seek(0,soFromCurrent,p2));
     inc(ltotal,p2-p1);
+  end;
+  function stmReadBSONDocArray(const v:OleVariant): boolean;
+  var
+    e:IBSONDocumentEnumerator;
+    p:int64;
+    l:integer;
+    n:WideString;
+  begin
+    if (VarType(v)=varUnknown) and
+      (IUnknown(v).QueryInterface(IID_IBSONDocumentEnumerator,e)=S_OK) then
+     begin
+      e.SetStream(stm);
+      repeat
+        OleCheck(stm.Seek(0,soFromCurrent,p));
+        e.Add(p);
+        stmRead(@l,4);
+        dec(l,4);
+        OleCheck(stm.Seek(l,soFromCurrent,p));
+        inc(ltotal,l);
+        l:=0;
+        stmRead(@l,1);
+        if l=0 then n:='' else
+         begin
+          if l<>bsonEmbeddedDocument then
+            raise EBSONException.Create('Can''t mix documents and non-documents with IBSONDocumentEnumerator');
+          n:=stmReadCString;
+          //assert n=IntToStr(e.Count);
+         end;
+      until n='';
+      Result:=true;
+     end
+    else
+      Result:=false;
   end;
 var
   j:integer;
@@ -336,211 +420,223 @@ const
   hex:array[0..15] of char='0123456789abcdef';
   vstackValuesGrowStep=$100;
 begin
-  ltotal:=0;
-  lstart:=0;
-  ltmax:=4;
-  stmRead(@ltMax,4);
-  vindex:=-1;
-  SetLength(vstack,0);
+  stm._AddRef;
+  try
+    inc(FLoadIndex);
+    sl:=0;
+    ltotal:=0;
+    lstart:=0;
+    ltmax:=4;
+    stmRead(@ltMax,4);
+    vindex:=-1;
+    SetLength(vstack,0);
 
-  while ltotal<ltmax do
-   begin
-    i:=0;
-    lstart:=ltotal;
-    stmRead(@i,1);
-    if i=0 then //end of document
+    while ltotal<ltmax do
      begin
-      if vindex=-1 then
+      i:=0;
+      lstart:=ltotal;
+      stmRead(@i,1);
+      if i=0 then //end of document
        begin
-        if ltotal<>ltmax then
-          raise EBSONException.Create('Less BSON data than declared');
+        if vindex=-1 then
+         begin
+          if ltotal<>ltmax then
+            raise EBSONException.Create('Less BSON data than declared');
+         end
+        else
+         begin
+          if ltotal-vstack[vindex].vstart>vstack[vindex].vlength then
+            raise EBSONException.Create('More BSON array data than declared at offset '+IntToHex(lstart,8));
+          SetLength(vstack[vindex].vv,vstack[vindex].vi);
+          //create variant array of variant (from pascal array of variant)
+          v:=VarArrayCreate([BSONArrayBaseIndex,vstack[vindex].vi-1+BSONArrayBaseIndex],vstack[vindex].vt);
+          for j:=0 to vstack[vindex].vi-1 do v[j]:=vstack[vindex].vv[j];
+          //store item
+          if vindex=0 then
+            Set_Item(vstack[vindex].vkey,v)
+          else
+           begin
+            i:=vindex-1;
+            if vstack[i].vi=vstack[i].vl then
+             begin
+              inc(vstack[i].vl,vstackValuesGrowStep);//grow in steps
+              SetLength(vstack[i].vv,vstack[i].vl);
+             end;
+            vstack[i].vv[vstack[i].vi]:=v;
+            inc(vstack[i].vi);
+           end;
+          //pop from array stack
+          SetLength(vstack[vindex].vv,0);
+          dec(vindex);
+          //SetLength(vstack,vindex);
+         end;
        end
       else
        begin
-        if ltotal-vstack[vindex].vstart>vstack[vindex].vlength then
-          raise EBSONException.Create('More BSON array data than declared at offset '+IntToHex(lstart,8));
-        SetLength(vstack[vindex].vv,vstack[vindex].vi);
-        //create variant array of variant (from pascal array of variant)
-        v:=VarArrayCreate([BSONArrayBaseIndex,vstack[vindex].vi-1+BSONArrayBaseIndex],vstack[vindex].vt);
-        for j:=0 to vstack[vindex].vi-1 do v[j]:=vstack[vindex].vv[j];
-        //store item
-        if vindex=0 then
-          Set_Item(vstack[vindex].vkey,v)
-        else
-         begin
-          i:=vindex-1;
-          if vstack[i].vi=vstack[i].vl then
+        k:=stmReadCString;
+        v:=Null;//VarClear
+        //TODO: store value somewhere?
+        case i of
+          bsonDouble:
            begin
-            inc(vstack[i].vl,vstackValuesGrowStep);//growstep
-            SetLength(vstack[i].vv,vstack[i].vl);
+            stmRead(@dd,8);
+            v:=dd;
            end;
-          vstack[i].vv[vstack[i].vi]:=v;
-          inc(vstack[i].vi);
-         end;
-        //pop from array stack
-        SetLength(vstack[vindex].vv,0);
-        dec(vindex);
-        //SetLength(vstack,vindex);
-       end;
-     end
-    else
-     begin
-      k:=stmReadCString;
-      v:=Null;//VarClear
-      //TODO: store value somewhere?
-      case i of
-        bsonDouble:
-         begin
-          stmRead(@dd,8);
-          v:=dd;
-         end;
-        bsonString:
-          v:=stmReadString;
-        bsonEmbeddedDocument:
-          v:=stmReadBSONDocument;
-        bsonArray:
-         begin
-          //push onto array stack
-          inc(vindex);
-          SetLength(vstack,vindex+1);
-          vstack[vindex].vkey:=k;
-          vstack[vindex].vi:=-1;
-          vstack[vindex].vl:=0;
-          vstack[vindex].vstart:=ltotal;
-          vstack[vindex].vt:=varVariant;//default, see BSONDetectVarArrayType below
-          stmRead(@vstack[vindex].vlength,4);//array document length
-         end;
-        bsonBinary:
-         begin
-          stmRead(@i,4);
-          stmRead(@o[11],1);
-          //TODO: store value somewhere?
-          case o[11] of
-            bsonBinaryGeneric,bsonBinaryOldBinary,bsonBinaryUserDefined:
-             begin
-              //
-              v:=VarArrayCreate([BSONArrayBaseIndex,i-1+BSONArrayBaseIndex],varByte);
-              pp:=VarArrayLock(v);
-              try
-                stmRead(pp,i);
-              finally
-                VarArrayUnlock(v);
-              end;
-             end;
-            bsonBinaryFunction:
-             begin
-              //TODO
-              raise EInvalidOperation.Create('Not Implemented');
-             end;
-            bsonBinaryUUID:
-             begin
-              if i<>16 then
-                raise EBSONException.Create('Unexpected UUID length ('+
-                  IntToStr(i)+') at offset '+IntToHex(lstart,8));
-              stmRead(@gg,16);
-              //TODO try to rig into varStrArg
-              v:=GUIDToString(gg);
-             end;
-            bsonBinaryMD5:
-             begin
-              //TODO
-              raise EInvalidOperation.Create('Not Implemented');
-             end;
+          bsonString:
+            v:=stmReadString;
+          bsonEmbeddedDocument:
+            if (vindex=0) and GetKeyIndex(vstack[vindex].vkey) and
+              stmReadBSONDocArray(FElements[FGotIndex].Value) then
+              vindex:=-2 //see below
             else
-              raise EBSONException.Create('Unknown BSON binary type '+
-                IntToHex(o[11],2)+' at offset '+IntToHex(lstart,8));
-          end;
-         end;
-        bsonObjectID:
-         begin
-          stmRead(@o[0],12);
-          v:=bsonObjectIDPrefix+
-            hex[o[00] shr 4]+hex[o[00] and $F]+
-            hex[o[01] shr 4]+hex[o[01] and $F]+
-            hex[o[02] shr 4]+hex[o[02] and $F]+
-            hex[o[03] shr 4]+hex[o[03] and $F]+
-            hex[o[04] shr 4]+hex[o[04] and $F]+
-            hex[o[05] shr 4]+hex[o[05] and $F]+
-            hex[o[06] shr 4]+hex[o[06] and $F]+
-            hex[o[07] shr 4]+hex[o[07] and $F]+
-            hex[o[08] shr 4]+hex[o[08] and $F]+
-            hex[o[09] shr 4]+hex[o[09] and $F]+
-            hex[o[10] shr 4]+hex[o[10] and $F]+
-            hex[o[11] shr 4]+hex[o[11] and $F]+
-            bsonObjectIDSuffix;
-         end;
-        bsonBoolean:
-         begin
-          i:=0;
-          stmRead(@i,1);
-          v:=boolean(i<>0);
-         end;
-        bsonUTCDateTime:
-         begin
-          stmRead(@ii,8);
-          v:=VarFromDateTime(ii/MSecsPerDay+UnixDateDelta);
-         end;
-        bsonNULL:;//v:=Null;
-        bsonRegEx:
-          {$IFDEF BSON_SUPPORT_REGEX}
-          v:=stmReadRegEx;
-          {$ELSE}
-          v:=bsonRegExPrefix+'/'+stmReadCString+'/'+stmReadCString;
-          {$ENDIF}
-        bsonJavaScriptCode:
-          v:=bsonJavaScriptCodePrefix+stmReadString;//TODO: find active script interface?
-        bsonSymbol:
-          v:=stmReadString;//?
-        bsonJavaScriptCodeWithScope:
-         begin
-          //TODO
-          raise EInvalidOperation.Create('Not Implemented');
-         end;
-        bsonInt32:
-         begin
-          stmRead(@i,4);
-          v:=i;
-         end;
-        bsonTimestamp:
-         begin
-          stmRead(@ii,8);
-          v:=ii;//convert?
-         end;
-        bsonInt64:
-         begin
-          stmRead(@ii,8);
-          v:=ii;
-         end;
-        else
-          raise EBSONException.Create('Unknown BSON element type '+
-            IntToHex(i,2)+' at offset '+IntToHex(lstart,8));
-      end;
-      //add the element
-      if vindex=-1 then
-        Set_Item(k,v)
-      else
-        if vstack[vindex].vi=-1 then
-          vstack[vindex].vi:=0 //just starting
-        else
-         begin
-          if vstack[vindex].vi=vstack[vindex].vl then
+              if stmReadBSONDocument((vindex=-1) and GetKeyIndex(k),v) then
+                vindex:=-2;//see below
+          bsonArray:
            begin
-            inc(vstack[vindex].vl,vstackValuesGrowStep);//growstep
-            SetLength(vstack[vindex].vv,vstack[vindex].vl);
+            //push onto array stack
+            inc(vindex);
+            SetLength(vstack,vindex+1);
+            vstack[vindex].vkey:=k;
+            vstack[vindex].vi:=-1;
+            vstack[vindex].vl:=0;
+            vstack[vindex].vstart:=ltotal;
+            vstack[vindex].vt:=varVariant;//default, see BSONDetectVarArrayType below
+            stmRead(@vstack[vindex].vlength,4);//array document length
            end;
-          if k<>IntToStr(vstack[vindex].vi) then
-            raise EBSONException.Create('Unexpected BSON array index key: "'+k+'"<>"'+
-              IntToStr(vstack[vindex].vi)+'" at offset '+IntToHex(lstart,8));
-          vstack[vindex].vv[vstack[vindex].vi]:=v;
-          if BSONDetectVarArrayType then
-            if vstack[vindex].vi=0 then vstack[vindex].vt:=VarType(v) else
-              if (vstack[vindex].vt<>varVariant) and (vstack[vindex].vt<>VarType(v)) then
-                vstack[vindex].vt:=varVariant;
-          inc(vstack[vindex].vi);
-         end;
+          bsonBinary:
+           begin
+            stmRead(@i,4);
+            stmRead(@o[11],1);
+            //TODO: store value somewhere?
+            case o[11] of
+              bsonBinaryGeneric,bsonBinaryOldBinary,bsonBinaryUserDefined:
+               begin
+                //
+                v:=VarArrayCreate([BSONArrayBaseIndex,i-1+BSONArrayBaseIndex],varByte);
+                pp:=VarArrayLock(v);
+                try
+                  stmRead(pp,i);
+                finally
+                  VarArrayUnlock(v);
+                end;
+               end;
+              bsonBinaryFunction:
+               begin
+                //TODO
+                raise EInvalidOperation.Create('Not Implemented');
+               end;
+              bsonBinaryUUID:
+               begin
+                if i<>16 then
+                  raise EBSONException.Create('Unexpected UUID length ('+
+                    IntToStr(i)+') at offset '+IntToHex(lstart,8));
+                stmRead(@gg,16);
+                //TODO try to rig into varStrArg
+                v:=GUIDToString(gg);
+               end;
+              bsonBinaryMD5:
+               begin
+                //TODO
+                raise EInvalidOperation.Create('Not Implemented');
+               end;
+              else
+                raise EBSONException.Create('Unknown BSON binary type '+
+                  IntToHex(o[11],2)+' at offset '+IntToHex(lstart,8));
+            end;
+           end;
+          bsonObjectID:
+           begin
+            stmRead(@o[0],12);
+            v:=bsonObjectIDPrefix+
+              hex[o[00] shr 4]+hex[o[00] and $F]+
+              hex[o[01] shr 4]+hex[o[01] and $F]+
+              hex[o[02] shr 4]+hex[o[02] and $F]+
+              hex[o[03] shr 4]+hex[o[03] and $F]+
+              hex[o[04] shr 4]+hex[o[04] and $F]+
+              hex[o[05] shr 4]+hex[o[05] and $F]+
+              hex[o[06] shr 4]+hex[o[06] and $F]+
+              hex[o[07] shr 4]+hex[o[07] and $F]+
+              hex[o[08] shr 4]+hex[o[08] and $F]+
+              hex[o[09] shr 4]+hex[o[09] and $F]+
+              hex[o[10] shr 4]+hex[o[10] and $F]+
+              hex[o[11] shr 4]+hex[o[11] and $F]+
+              bsonObjectIDSuffix;
+           end;
+          bsonBoolean:
+           begin
+            i:=0;
+            stmRead(@i,1);
+            v:=boolean(i<>0);
+           end;
+          bsonUTCDateTime:
+           begin
+            stmRead(@ii,8);
+            v:=VarFromDateTime(ii/MSecsPerDay+UnixDateDelta);
+           end;
+          bsonNULL:;//v:=Null;
+          bsonRegEx:
+            {$IFDEF BSON_SUPPORT_REGEX}
+            v:=stmReadRegEx;
+            {$ELSE}
+            v:=bsonRegExPrefix+'/'+stmReadCString+'/'+stmReadCString;
+            {$ENDIF}
+          bsonJavaScriptCode:
+            v:=bsonJavaScriptCodePrefix+stmReadString;//TODO: find active script interface?
+          bsonSymbol:
+            v:=stmReadString;//?
+          bsonJavaScriptCodeWithScope:
+           begin
+            //TODO
+            raise EInvalidOperation.Create('Not Implemented');
+           end;
+          bsonInt32:
+           begin
+            stmRead(@i,4);
+            v:=i;
+           end;
+          bsonTimestamp:
+           begin
+            stmRead(@ii,8);
+            v:=ii;//convert?
+           end;
+          bsonInt64:
+           begin
+            stmRead(@ii,8);
+            v:=ii;
+           end;
+          else
+            raise EBSONException.Create('Unknown BSON element type '+
+              IntToHex(i,2)+' at offset '+IntToHex(lstart,8));
+        end;
+        if vindex=-1 then
+          Set_Item(k,v) //add the element
+        else if vindex=-2 then
+          vindex:=-1 //see stmReadBSONDocument,stmReadBSONDocument above
+        else
+          if vstack[vindex].vi=-1 then
+            vstack[vindex].vi:=0 //just starting
+          else
+           begin
+            if vstack[vindex].vi=vstack[vindex].vl then
+             begin
+              inc(vstack[vindex].vl,vstackValuesGrowStep);//grow in steps
+              SetLength(vstack[vindex].vv,vstack[vindex].vl);
+             end;
+            if k<>IntToStr(vstack[vindex].vi) then
+              raise EBSONException.Create('Unexpected BSON array index key: "'+k+'"<>"'+
+                IntToStr(vstack[vindex].vi)+'" at offset '+IntToHex(lstart,8));
+            vstack[vindex].vv[vstack[vindex].vi]:=v;
+            if BSONDetectVarArrayType then
+              if vstack[vindex].vi=0 then vstack[vindex].vt:=VarType(v) else
+                if (vstack[vindex].vt<>varVariant) and (vstack[vindex].vt<>VarType(v)) then
+                  vstack[vindex].vt:=varVariant;
+            inc(vstack[vindex].vi);
+           end;
+       end;
      end;
-   end;
-
+  finally
+    stm._Release;
+  end;
   FDirty:=false;
   Result:=S_OK;
   //TODO: try except Result:=E_?
@@ -726,240 +822,245 @@ var
     vstart,vi,v1,v2:integer;
   end;
 begin
-  OleCheck(stm.Seek(0,soFromCurrent,lstart));
-  ltotal:=0;
-  i:=0;//write now, fill in later
-  stmWrite(@i,4);
+  stm._AddRef;
+  try
+    OleCheck(stm.Seek(0,soFromCurrent,lstart));
+    ltotal:=0;
+    i:=0;//write now, fill in later
+    stmWrite(@i,4);
 
-  vindex:=-1;
-  xi:=0;
-  while (xi<FElementIndex) or (vindex>=0) do
-   begin
-    if vindex=-1 then
+    vindex:=-1;
+    xi:=0;
+    while (xi<FElementIndex) or (vindex>=0) do
      begin
-      key:=FElements[xi].Key;
-      v:=FElements[xi].Value;
-      inc(xi);
-     end
-    else
-     begin
-      key:=IntToStr(vstack[vindex].vi-vstack[vindex].v1);
-      v:=vstack[vindex].vv[vstack[vindex].vi];
-      inc(vstack[vindex].vi);
-     end;
+      if vindex=-1 then
+       begin
+        key:=FElements[xi].Key;
+        v:=FElements[xi].Value;
+        inc(xi);
+       end
+      else
+       begin
+        key:=IntToStr(vstack[vindex].vi-vstack[vindex].v1);
+        v:=vstack[vindex].vv[vstack[vindex].vi];
+        inc(vstack[vindex].vi);
+       end;
 
-    vt:=VarType(v);
-    IsArray:=(vt and varArray)<>0;
-    if IsArray then
-      if VarArrayDimCount(v)>1 then
-        raise EInvalidOperation.Create('VarArray: multi-dimensional arrays not supported');//TODO:
-    if (vt and varByRef)<>0 then
-      raise EInvalidOperation.Create('VarByRef: not implemented');//TODO: arrays!!!
+      vt:=VarType(v);
+      IsArray:=(vt and varArray)<>0;
+      if IsArray then
+        if VarArrayDimCount(v)>1 then
+          raise EInvalidOperation.Create('VarArray: multi-dimensional arrays not supported');//TODO:
+      if (vt and varByRef)<>0 then
+        raise EInvalidOperation.Create('VarByRef: not implemented');//TODO: arrays!!!
 
-    if IsArray and ((vt and varTypeMask)=varByte) then
-     begin
-      i:=bsonBinary;
-      stmWrite(@i,1);
-      stmWriteCString(key);
-      j:=VarArrayHighBound(v,1)-VarArrayLowBound(v,1);
-      stmWrite(@j,4);
-      i:=bsonBinaryGeneric;
-      stmWrite(@i,1);
-      pp:=VarArrayLock(v);
-      try
-        stmWrite(pp,j);
-      finally
-        VarArrayUnlock(v);
-      end;
-     end
-    else
-    if IsArray then
-     begin
-      //push onto array stack
-      inc(vindex);
-      SetLength(vstack,vindex+1);
-      vstack[vindex].vv:=v;
-      vstack[vindex].v1:=VarArrayLowBound(v,1);
-      vstack[vindex].v2:=VarArrayHighBound(v,1);
-      vstack[vindex].vi:=vstack[vindex].v1;
-      i:=bsonArray;
-      stmWrite(@i,1);
-      stmWriteCString(key);
-      vstack[vindex].vstart:=ltotal;
-      i:=0;
-      stmWrite(@i,4);//don't know total length now, filled in later
-     end
-    else
-     begin
+      if IsArray and ((vt and varTypeMask)=varByte) then
+       begin
+        i:=bsonBinary;
+        stmWrite(@i,1);
+        stmWriteCString(key);
+        j:=VarArrayHighBound(v,1)-VarArrayLowBound(v,1);
+        stmWrite(@j,4);
+        i:=bsonBinaryGeneric;
+        stmWrite(@i,1);
+        pp:=VarArrayLock(v);
+        try
+          stmWrite(pp,j);
+        finally
+          VarArrayUnlock(v);
+        end;
+       end
+      else
+      if IsArray then
+       begin
+        //push onto array stack
+        inc(vindex);
+        SetLength(vstack,vindex+1);
+        vstack[vindex].vv:=v;
+        vstack[vindex].v1:=VarArrayLowBound(v,1);
+        vstack[vindex].v2:=VarArrayHighBound(v,1);
+        vstack[vindex].vi:=vstack[vindex].v1;
+        i:=bsonArray;
+        stmWrite(@i,1);
+        stmWriteCString(key);
+        vstack[vindex].vstart:=ltotal;
+        i:=0;
+        stmWrite(@i,4);//don't know total length now, filled in later
+       end
+      else
+       begin
 
-      //TODO: re-use stored bson type? if any?
-      case vt and varTypeMask of
-        //varEmpty?
-        varNull:
-         begin
-          i:=bsonNULL;
-          stmWrite(@i,1);
-          stmWriteCString(key);
-         end;
-        varSmallint,varInteger,varShortInt,varByte,varWord,varLongWord:
-         begin
-          i:=bsonInt32;
-          stmWrite(@i,1);
-          stmWriteCString(key);
-          i:=v;
-          stmWrite(@i,4);
-         end;
-        varInt64:
-         begin
-          i:=bsonInt64;
-          stmWrite(@i,1);
-          stmWriteCString(key);
-          ii:=v;
-          stmWrite(@ii,8);
-          //TODO: detect bsonTimestamp?
-         end;
-        varSingle,varDouble,varCurrency:
-         begin
-          i:=bsonDouble;
-          stmWrite(@i,1);
-          stmWriteCString(key);
-          dd:=v;
-          stmWrite(@dd,8);
-         end;
-        varDate:
-         begin
-          i:=bsonUTCDateTime;
-          stmWrite(@i,1);
-          stmWriteCString(key);
-          ii:=Round((VarToDateTime(v)-UnixDateDelta)*MSecsPerDay);
-          stmWrite(@ii,8);
-         end;
-        varOleStr:
-         begin
-          //detect GUID //TODO try to rig varStrArg
-          w:=VarToWideStr(v);
-          wl:=Length(w);
-          if (wl=38) and (w[1]='{') and (w[38]='}')
-            and (w[10]='-') and (w[15]='-')
-            and (w[20]='-') and (w[25]='-') then //and the other are hex digits?
+        //TODO: re-use stored bson type? if any?
+        case vt and varTypeMask of
+          //varEmpty?
+          varNull:
            begin
-            //assume UUID
-            gg:=StringToGUID(w);
-            i:=bsonBinary;
+            i:=bsonNULL;
             stmWrite(@i,1);
             stmWriteCString(key);
-            i:=16;//SizeOf(TGUID);
-            stmWrite(@i,4);
-            i:=bsonBinaryUUID;
-            stmWrite(@i,1);
-            stmWrite(@gg,16);
-           end
-          else
-          //detect objectID
-		      if (wl=bsonObjectID_L) and StartsWith(w,bsonObjectIDPrefix) then //and the other are hex digits?
-           begin
-            i:=bsonObjectID;
-            stmWrite(@i,1);
-            stmWriteCString(key);
-			      j:=Length(bsonObjectIDPrefix)+1;
-            for i:=0 to 11 do
-             begin
-              bb:=byte(AnsiChar(w[j+i*2]));
-              if (bb and $F0)=$30 then o[i]:=bb shl 4 else o[i]:=(9+bb) shl 4;
-              bb:=byte(AnsiChar(w[j+i*2+1]));
-              if (bb and $F0)=$30 then inc(o[i],bb and $F) else inc(o[i],(9+bb) and $F);
-             end;
-            stmWrite(@o[0],12);
-           end
-          else
-          //detect javascript
-          if StartsWith(w,bsonJavaScriptCodePrefix) then
-           begin
-            i:=bsonJavaScriptCode;
-            stmWrite(@i,1);
-            stmWriteCString(key);
-            stmWriteString(Copy(w,Length(bsonJavaScriptCodePrefix)+1,Length(w)-Length(bsonJavaScriptCodePrefix)));
-           end
-          else
-          //detect regex
-          if StartsWith(w,bsonRegExPrefix) then
-           begin
-            i:=bsonRegEx;
-            stmWrite(@i,1);
-            stmWriteCString(key);
-            i:=Length(bsonRegExPrefix)+1;
-            if (i<=Length(w)) and (w[i]='/') then inc(i);//TODO: support alternate regex delimiter?
-            j:=i;
-            while (j<=Length(w)) and (w[i]<>'/') do inc(j);
-            stmWriteCString(Copy(w,i,j-i));
-            stmWriteCString(Copy(w,j+1,Length(w)-j));
-           end
-          else
-           begin
-            i:=bsonString;
-            stmWrite(@i,1);
-            stmWriteCString(key);
-            stmWriteString(w);
            end;
-          //TODO: bsonJavaScriptCodeWithScope, bsonSymbol ?
-         end;
-        //TODO varStrArg as bsonBinaryUUID
-        varBoolean:
-         begin
-          i:=bsonBoolean;
-          stmWrite(@i,1);
-          stmWriteCString(key);
-          if v then i:=1 else i:=0;
-          stmWrite(@i,1);
-         end;
-        //varVariant://TODO
-        varDispatch,varUnknown:
-         begin
-          uu:=IUnknown(v);
-          if uu<>nil then
-          if not TryWriteBSONDocument then
-          {$IFDEF BSON_SUPPORT_REGEX}
-          if not TryWriteRegExp then
-          {$ENDIF}
-          if not TryWriteStream then
-          if not TryWritePersistStream then
-            raise EBSONException.Create('No supported interface found on object "'+key+'"');
-         end;
-        else raise EBSONException.Create('Unsupported variant type '+IntToHex(vt,4)+' "'+key+'"');
-      end;
+          varSmallint,varInteger,varShortInt,varByte,varWord,varLongWord:
+           begin
+            i:=bsonInt32;
+            stmWrite(@i,1);
+            stmWriteCString(key);
+            i:=v;
+            stmWrite(@i,4);
+           end;
+          varInt64:
+           begin
+            i:=bsonInt64;
+            stmWrite(@i,1);
+            stmWriteCString(key);
+            ii:=v;
+            stmWrite(@ii,8);
+            //TODO: detect bsonTimestamp?
+           end;
+          varSingle,varDouble,varCurrency:
+           begin
+            i:=bsonDouble;
+            stmWrite(@i,1);
+            stmWriteCString(key);
+            dd:=v;
+            stmWrite(@dd,8);
+           end;
+          varDate:
+           begin
+            i:=bsonUTCDateTime;
+            stmWrite(@i,1);
+            stmWriteCString(key);
+            ii:=Round((VarToDateTime(v)-UnixDateDelta)*MSecsPerDay);
+            stmWrite(@ii,8);
+           end;
+          varOleStr:
+           begin
+            //detect GUID //TODO try to rig varStrArg
+            w:=VarToWideStr(v);
+            wl:=Length(w);
+            if (wl=38) and (w[1]='{') and (w[38]='}')
+              and (w[10]='-') and (w[15]='-')
+              and (w[20]='-') and (w[25]='-') then //and the other are hex digits?
+             begin
+              //assume UUID
+              gg:=StringToGUID(w);
+              i:=bsonBinary;
+              stmWrite(@i,1);
+              stmWriteCString(key);
+              i:=16;//SizeOf(TGUID);
+              stmWrite(@i,4);
+              i:=bsonBinaryUUID;
+              stmWrite(@i,1);
+              stmWrite(@gg,16);
+             end
+            else
+            //detect objectID
+            if (wl=bsonObjectID_L) and StartsWith(w,bsonObjectIDPrefix) then //and the other are hex digits?
+             begin
+              i:=bsonObjectID;
+              stmWrite(@i,1);
+              stmWriteCString(key);
+              j:=Length(bsonObjectIDPrefix)+1;
+              for i:=0 to 11 do
+               begin
+                bb:=byte(AnsiChar(w[j+i*2]));
+                if (bb and $F0)=$30 then o[i]:=bb shl 4 else o[i]:=(9+bb) shl 4;
+                bb:=byte(AnsiChar(w[j+i*2+1]));
+                if (bb and $F0)=$30 then inc(o[i],bb and $F) else inc(o[i],(9+bb) and $F);
+               end;
+              stmWrite(@o[0],12);
+             end
+            else
+            //detect javascript
+            if StartsWith(w,bsonJavaScriptCodePrefix) then
+             begin
+              i:=bsonJavaScriptCode;
+              stmWrite(@i,1);
+              stmWriteCString(key);
+              stmWriteString(Copy(w,Length(bsonJavaScriptCodePrefix)+1,Length(w)-Length(bsonJavaScriptCodePrefix)));
+             end
+            else
+            //detect regex
+            if StartsWith(w,bsonRegExPrefix) then
+             begin
+              i:=bsonRegEx;
+              stmWrite(@i,1);
+              stmWriteCString(key);
+              i:=Length(bsonRegExPrefix)+1;
+              if (i<=Length(w)) and (w[i]='/') then inc(i);//TODO: support alternate regex delimiter?
+              j:=i;
+              while (j<=Length(w)) and (w[i]<>'/') do inc(j);
+              stmWriteCString(Copy(w,i,j-i));
+              stmWriteCString(Copy(w,j+1,Length(w)-j));
+             end
+            else
+             begin
+              i:=bsonString;
+              stmWrite(@i,1);
+              stmWriteCString(key);
+              stmWriteString(w);
+             end;
+            //TODO: bsonJavaScriptCodeWithScope, bsonSymbol ?
+           end;
+          //TODO varStrArg as bsonBinaryUUID
+          varBoolean:
+           begin
+            i:=bsonBoolean;
+            stmWrite(@i,1);
+            stmWriteCString(key);
+            if v then i:=1 else i:=0;
+            stmWrite(@i,1);
+           end;
+          //varVariant://TODO
+          varDispatch,varUnknown:
+           begin
+            uu:=IUnknown(v);
+            if uu<>nil then
+            if not TryWriteBSONDocument then
+            {$IFDEF BSON_SUPPORT_REGEX}
+            if not TryWriteRegExp then
+            {$ENDIF}
+            if not TryWriteStream then
+            if not TryWritePersistStream then
+              raise EBSONException.Create('No supported interface found on object "'+key+'"');
+           end;
+          else raise EBSONException.Create('Unsupported variant type '+IntToHex(vt,4)+' "'+key+'"');
+        end;
+       end;
+
+      while (vindex>=0) and (vstack[vindex].vi>vstack[vindex].v2) do
+       begin
+        //terminator
+        i:=0;
+        stmWrite(@i,1);
+        //write total length
+        OleCheck(stm.Seek(lstart+vstack[vindex].vstart,soFromBeginning,lx));
+        i:=ltotal-vstack[vindex].vstart;
+        OleCheck(stm.Write(@i,4,@li));
+        //return to end position
+        OleCheck(stm.Seek(lstart+ltotal,soFromBeginning,lx));
+        //pop from array stack
+        vstack[vindex].vv:=Null;
+        dec(vindex);
+        //SetLength(vstack,vindex);
+       end;
+
      end;
+    //terminator
+    i:=0;
+    stmWrite(@i,1);
 
-    while (vindex>=0) and (vstack[vindex].vi>vstack[vindex].v2) do
-     begin
-      //terminator
-      i:=0;
-      stmWrite(@i,1);
-      //write total length
-      OleCheck(stm.Seek(lstart+vstack[vindex].vstart,soFromBeginning,lx));
-      i:=ltotal-vstack[vindex].vstart;
-      OleCheck(stm.Write(@i,4,@li));
-      //return to end position
-      OleCheck(stm.Seek(lstart+ltotal,soFromBeginning,lx));
-      //pop from array stack
-      vstack[vindex].vv:=Null;
-      dec(vindex);
-      //SetLength(vstack,vindex);
-     end;
+    //write total length
+    OleCheck(stm.Seek(lstart,soFromBeginning,lx));
+    OleCheck(stm.Write(@ltotal,4,@li));
+    //assert(li=4);
 
-   end;
-  //terminator
-  i:=0;
-  stmWrite(@i,1);
+    //return to end position
+    OleCheck(stm.Seek(ltotal-4,soFromCurrent,lx));
+    //assert(lx=lstart+ltotal);
 
-  //write total length
-  OleCheck(stm.Seek(lstart,soFromBeginning,lx));
-  OleCheck(stm.Write(@ltotal,4,@li));
-  //assert(li=4);
-
-  //return to end position
-  OleCheck(stm.Seek(ltotal-4,soFromCurrent,lx));
-  //assert(lx=lstart+ltotal);
-
+  finally
+    stm._Release;
+  end;
   if fClearDirty then FDirty:=false;
   Result:=S_OK;
   //TODO: try except Result:=E_?
@@ -1045,6 +1146,77 @@ begin
    end;
   //if di>0 then raise Exception.Create('BSON builder: '+IntToStr(di)+' closing brackets missing');?
   Result:=d[0];
+end;
+
+{ TBSONDocumentEnumerator }
+
+procedure TBSONDocumentEnumerator.AfterConstruction;
+begin
+  inherited;
+  FData:=nil;
+  FPosIndex:=0;
+  FPosSize:=0;
+  FPosCurrent:=-1;
+end;
+
+destructor TBSONDocumentEnumerator.Destroy;
+begin
+  FData:=nil;
+  SetLength(FPos,0);
+  inherited;
+end;
+
+procedure TBSONDocumentEnumerator.SetStream(const stm: IStream);
+begin
+  FData:=stm;
+  FPosIndex:=0;
+  FPosCurrent:=-1;
+end;
+
+procedure TBSONDocumentEnumerator.Add(pos: int64);
+begin
+  if FPosIndex=FPosSize then
+   begin
+    inc(FPosSize,128);//grow
+    SetLength(FPos,FPosSize);
+   end;
+  FPos[FPosIndex]:=pos;
+end;
+
+function TBSONDocumentEnumerator.GetCount: integer;
+begin
+  Result:=FPosIndex;
+end;
+
+function TBSONDocumentEnumerator.Next(const doc: IBSONDocument): boolean;
+var
+  p:int64;
+begin
+  //TODO: detect dirty (deep!), then update into stream??
+  if FPosCurrent>=FPosIndex then Result:=false else
+   begin
+    OleCheck(FData.Seek(FPos[FPosCurrent],soFromBeginning,p));
+    (doc as IPersistStream).Load(FData);
+    Result:=true;
+    inc(FPosCurrent);
+   end;
+end;
+
+procedure TBSONDocumentEnumerator.Reset;
+begin
+  FPosCurrent:=0;
+end;
+
+procedure TBSONDocumentEnumerator.Skip(n: integer);
+begin
+  if (FPosCurrent+n>FPosIndex) or (FPosCurrent+n<0) then
+    raise EBSONException.Create('IBSONDocumentEnumerator.Skip can''t skip past count');
+  inc(FPosCurrent,n);
+end;
+
+function BSONEnum:IBSONDocumentEnumerator;
+begin
+  Result:=TBSONDocumentEnumerator.Create;
 end;
 
 end.

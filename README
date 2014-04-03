@@ -2,28 +2,40 @@ Delphi MongoDB Driver
 ---------------------
 
 A Delphi driver to access a mongoDB server.
-It maps variables onto Delphi variables of type OleVariant, which resembles the loose typing of JavaScript.
-There are two main units and three main classes to enable access to a mongo DB server:
+It maps variables onto Delphi variables of type OleVariant, which resembles
+the loose typing of JavaScript.
+There are two main units and three main classes to enable access to a mongo DB 
+server:
 
 bsonDoc.pas
   TBSONDocument = class(TInterfacedObject, IBSONDocument, IPersistStream)
     Holds the data of a 'document', the basic unit of data mongoDB works with.
-    Implements an IBSONDocument interface which allows it to be referenced by an OleVariant variable, which enables embedding documents.
-    Implements the IPersistStream interface to enable loading from and saving to BSON, the internal binary storage specification used by mongoDB.
+    Implements an IBSONDocument interface which allows it to be referenced by
+	an OleVariant variable, which enables embedding documents.
+    Implements the IPersistStream interface to enable loading from and saving
+	to BSON, the internal binary storage specification used by mongoDB.
 
-  function BSON:IBSONDocument; overload;
-  function BSON(x:array of OleVariant):IBSONDocument; overload;
+  function BSON: IBSONDocument; overload;
+  function BSON(x: array of OleVariant): IBSONDocument; overload;
     Creates a BSON document object ready for use.
-    Optionally pass a sequence of key-value pairs, e.g.: BSON(['x',5,'y',7]);
-    Use '[' and ']' to created embedded documents, e.g.: BSON(['x','[','$gt',7,']']);
-    Use VarArrayOf or 1-dimensional variant arrays to add arrays, e.g.: BSON(['x',VarArrayOf(1,2,3)]);
+    Optionally pass a sequence of key-value pairs,
+	  e.g.: BSON(['x',5,'y',7]);
+    Use '[' and ']' to created embedded documents,
+	  e.g.: BSON(['x','[','$gt',7,']']);
+    Use VarArrayOf or 1-dimensional variant arrays to add arrays,
+	  e.g.: BSON(['x',VarArrayOf(1,2,3)]);
+	  
+  function BSONenum: IBSONDocumentEnumerator;
+    See below
 
 mongoWire.pas
   TMongoWire=class(TObject)
-    A connection to a mongoDB server. Supports getting single items, performing inserts, updates and deletes.
+    A connection to a mongoDB server. Supports getting single items, 
+	performing inserts, updates and deletes.
 
   TMongoWireQuery=class(TBSONDocumentsEnumerator)
-    A query to a mongoDB server, handles the cursor and subsequent requests to the server to get more data when needed.
+    A query to a mongoDB server, handles the cursor and subsequent requests to
+	the server to get more data when needed.
 	
 http://yoy.be/TMongoWire
 https://github.com/stijnsanders/TMongoWire
@@ -33,12 +45,45 @@ Additional tools
 ----------------
 
 bsonUtils.pas
-  function BsonToJson(Doc:IBSONDocument):WideString;
+  function BsonToJson(Doc: IBSONDocument): WideString;
     Converts a BSON document into a JSON string.
-  function JsonToBson(jsonData:WideString):IBSONDocument;
+  function JsonToBson(jsonData: WideString): IBSONDocument;
     Converts a JSON string into a BSON document.
-  procedure JsonIntoBson(jsonData:WideString;doc:IBSONDocument); overload;
-    Parses a JSON string and adds any keys to an existing BSON document, overwriting the value if a key already exists.
-  procedure JsonIntoBson(jsonData:WideString;doc:IBSONDocument;var EndIndex:integer); overload;
-    Parses only the first JSON object from a string into an existing BSON document, and returns the index into the string where the JSON object ends.
-	Use this method to iterate over a list of JSON strings. (See also IBSONDocument.Clear)
+  procedure JsonIntoBson(jsonData: WideString; doc: IBSONDocument); overload;
+    Parses a JSON string and adds any keys to an existing BSON document,
+	overwriting the value if a key already exists.
+  procedure JsonIntoBson(jsonData: WideString; doc: IBSONDocument;
+    var EndIndex:integer); overload;
+    Parses only the first JSON object from a string into an existing BSON
+	document, and returns the index into the string where the JSON object
+	ends. Use this method to iterate over a list of JSON strings.
+	(See also IBSONDocument.Clear)
+
+BSON document enumerator
+------------------------
+
+In scenario's where you have BSON documents that contain one or more arrays of
+other BSON documents, parsing the data into the total number of BSON document
+instances required, may take a lot of memory and have an impact on performance.
+This is in disaccord with the fact that most probably the children documents
+get processed one by one.
+
+To improve this scenario, you can use IBSONDocumentEnumerator. The Load method
+of the default IBSONDocument implementation detects if an
+IBSONDocumentEnumerator instance is present when it is about to parse an
+embedded document in an array. If there is, the IBSONDocumentEnumerator
+instance is loaded with an extra reference to the storage stream and the
+stream positions of the documents in the array, but the internal
+structure is not parsed yet. (Attention: since the enumerator keeps a
+reference to the storage stream, its lifetime may get extended past the
+original IPersistStream.Load call.)
+
+By using the enumerator's Next method on a single IBSONDocument instance, only
+one document at a time is parsed. Since the default IBSONDocument
+implementation keeps the current set of keys and children documents, no time
+is wasted releasing and re-allocating memory for (almost) the same structure
+of data.
+
+Attention: IBSONDocumentEnumerator doesn't support updates (yet?). It's
+available read-only, but doesn't enforce this. Modifications to the document
+used with Next don't get updated.
