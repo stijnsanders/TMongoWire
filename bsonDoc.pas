@@ -140,7 +140,8 @@ type
     procedure Reset; safecall;
   end;
 
-function BSONEnum: IBSONDocumentEnumerator;
+function BSONEnum: IBSONDocumentEnumerator; overload;
+function BSONEnum(const v:OleVariant): IBSONDocumentEnumerator; overload;
 
 implementation
 
@@ -1241,6 +1242,13 @@ end;
 function BSONEnum:IBSONDocumentEnumerator;
 begin
   Result:=TBSONDocumentEnumerator.Create;
+end;
+
+function BSONEnum(const v:OleVariant): IBSONDocumentEnumerator; overload;
+begin
+  if not((VarType(v)=varUnknown) and
+    (IUnknown(v).QueryInterface(IID_IBSONDocumentEnumerator,Result)=S_OK)) then
+    raise EBSONException.Create('Value is not IBSONDocumentEnumerator');
 end;
 
 end.
