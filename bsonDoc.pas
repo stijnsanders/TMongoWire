@@ -831,6 +831,7 @@ begin
 
     vindex:=-1;
     xi:=0;
+    while (xi<FElementIndex) and (FElements[xi].LoadIndex<>FLoadIndex) do inc(xi);
     while (xi<FElementIndex) or (vindex>=0) do
      begin
       if vindex=-1 then
@@ -838,6 +839,7 @@ begin
         key:=FElements[xi].Key;
         v:=FElements[xi].Value;
         inc(xi);
+        while (xi<FElementIndex) and (FElements[xi].LoadIndex<>FLoadIndex) do inc(xi);
        end
       else
        begin
@@ -895,9 +897,11 @@ begin
           //varEmpty?
           varNull:
            begin
+            {
             i:=bsonNULL;
             stmWrite(@i,1);
             stmWriteCString(key);
+            }
            end;
           varSmallint,varInteger,varShortInt,varByte,varWord,varLongWord:
            begin
@@ -1016,6 +1020,7 @@ begin
             uu:=IUnknown(v);
             if uu<>nil then
             if not TryWriteBSONDocument then
+            //TODO: if not TryWriteBSONDocumentEnumerator then
             {$IFDEF BSON_SUPPORT_REGEX}
             if not TryWriteRegExp then
             {$ENDIF}
@@ -1085,14 +1090,21 @@ end;
 
 function TBSONDocument.ToVarArray: OleVariant;
 var
-  i:integer;
+  i,l:integer;
 begin
-  Result:=VarArrayCreate([0,FElementIndex-1,0,1],varVariant);
+  l:=0;
   for i:=0 to FElementIndex-1 do
-   begin
-    Result[i,0]:=FElements[i].Key;
-    Result[i,1]:=FElements[i].Value;
-   end;
+    if FElements[i].LoadIndex=FLoadIndex then inc(l);
+      //and not(VarIsNull(FElements[i].Value))?
+  Result:=VarArrayCreate([0,l-1,0,1],varVariant);
+  l:=0;
+  for i:=0 to FElementIndex-1 do
+    if FElements[i].LoadIndex=FLoadIndex then
+     begin
+      Result[l,0]:=FElements[i].Key;
+      Result[l,1]:=FElements[i].Value;
+      inc(l);
+     end;
 end;
 
 function BSON:IBSONDocument; //overload;
@@ -1146,6 +1158,7 @@ begin
    end;
   //if di>0 then raise Exception.Create('BSON builder: '+IntToStr(di)+' closing brackets missing');?
   Result:=d[0];
+  //TODO: Result.FIsDirty:=false?
 end;
 
 { TBSONDocumentEnumerator }
