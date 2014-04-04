@@ -707,6 +707,17 @@ var
       inc(ltotal,jj-ii);
      end;
   end;
+  function TryWriteBSONDocumentEnumerator:boolean;
+  var
+    di:IBSONDocumentEnumerator;
+  begin
+    Result:=uu.QueryInterface(IID_IBSONDocumentEnumerator,di)=S_OK;
+    if Result then
+     begin
+      raise EBSONException.Create('Save IBSONDocumentEnumerator not implemented');
+      //TODO: write documents (were any dirty?)
+     end;
+  end;
   {$IFDEF BSON_SUPPORT_REGEX}
   function TryWriteRegExp:boolean;
   var
@@ -1020,7 +1031,7 @@ begin
             uu:=IUnknown(v);
             if uu<>nil then
             if not TryWriteBSONDocument then
-            //TODO: if not TryWriteBSONDocumentEnumerator then
+            if not TryWriteBSONDocumentEnumerator then
             {$IFDEF BSON_SUPPORT_REGEX}
             if not TryWriteRegExp then
             {$ENDIF}

@@ -273,7 +273,7 @@ begin
     i:=0;
     while (i<FQueueIndex) and (FQueue[i].RequestID<>RequestID) do inc(i);
     if i=FQueueIndex then
-      raise Exception.Create('MongoWire: ReadMsg called on not queued requestID');
+      raise EMongoException.Create('MongoWire: ReadMsg called on not queued requestID');
     if FQueue[i].Data=nil then
      begin
       //yes, it's in, release this spot on the queue
