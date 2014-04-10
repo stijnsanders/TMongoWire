@@ -1,3 +1,12 @@
+{
+
+TMongoWire: mongoAuth.pas
+
+Copyright 2010-2014 Stijn Sanders
+Made available under terms described in file "COPYING"
+https://github.com/stijnsanders/TMongoWire
+
+}
 unit mongoAuth;
 
 interface
