@@ -16,7 +16,7 @@ uses SysUtils, SyncObjs, Classes, Sockets, bsonDoc;
 type
   TBSONDocumentsEnumerator=class //abstract
   public
-    function Next(Doc:IBSONDocument):boolean; virtual; abstract;
+    function Next(const Doc:IBSONDocument):boolean; virtual; abstract;
   end;
 
   TMongoWire=class(TObject)
@@ -48,13 +48,13 @@ type
     //Query: see TMongoWireQuery.Create
     procedure Update(
       const Collection:WideString;
-      Selector,Doc:IBSONDocument;
+      const Selector,Doc:IBSONDocument;
       Upsert:boolean=false;
       MultiUpdate:boolean=false
     );
     procedure Insert(
       const Collection:WideString;
-      Doc:IBSONDocument
+      const Doc:IBSONDocument
     ); overload;
     procedure Insert(
       const Collection:WideString;
@@ -66,14 +66,14 @@ type
     ); overload;
     procedure Delete(
       const Collection:WideString;
-      Selector:IBSONDocument;
+      const Selector:IBSONDocument;
       SingleRemove:boolean=false
     );
     function Ping: Boolean;
     procedure EnsureIndex(
       const Database,Collection:WideString;
-      Index:IBSONDocument;
-      Options:IBSONDocument=nil
+      const Index:IBSONDocument;
+      const Options:IBSONDocument=nil
     );
   end;
 
@@ -94,7 +94,7 @@ type
       QryObj:IBSONDocument;
       ReturnFieldSelector:IBSONDocument=nil;
       Flags:integer=0);
-    function Next(Doc:IBSONDocument):boolean; override;
+    function Next(const Doc:IBSONDocument):boolean; override;
     property NumberToReturn:integer read FNumberToReturn write FNumberToReturn;
     property NumberToSkip:integer read FNumberToSkip write FNumberToSkip;//TODO: set?
   end;
@@ -393,7 +393,7 @@ begin
   end;
 end;
 
-procedure TMongoWire.Update(const Collection: WideString; Selector,
+procedure TMongoWire.Update(const Collection: WideString; const Selector,
   Doc: IBSONDocument; Upsert, MultiUpdate: boolean);
 var
   i:integer;
@@ -422,7 +422,8 @@ begin
   end;
 end;
 
-procedure TMongoWire.Insert(const Collection: WideString; Doc: IBSONDocument);
+procedure TMongoWire.Insert(const Collection: WideString;
+  const Doc: IBSONDocument);
 begin
   if Doc=nil then raise EMongoException.Create('MongoWire.Insert: Doc required');
   FWriteLock.Enter;
@@ -467,7 +468,7 @@ begin
 end;
 
 procedure TMongoWire.Delete(const Collection: WideString;
-  Selector: IBSONDocument; SingleRemove: boolean);
+  const Selector: IBSONDocument; SingleRemove: boolean);
 var
   i:integer;
 begin
@@ -502,8 +503,8 @@ begin
   end;
 end;
 
-procedure TMongoWire.EnsureIndex(const Database,Collection:WideString;
-  Index:IBSONDocument;Options:IBSONDocument=nil);
+procedure TMongoWire.EnsureIndex(const Database, Collection: WideString;
+  const Index: IBSONDocument; const Options: IBSONDocument=nil);
 var
   Document: IBSONDocument;
   Name: String;
@@ -622,7 +623,7 @@ begin
   FCollection:=Collection;
 end;
 
-function TMongoWireQuery.Next(Doc: IBSONDocument): boolean;
+function TMongoWireQuery.Next(const Doc: IBSONDocument): boolean;
 var
   i:integer;
 begin
