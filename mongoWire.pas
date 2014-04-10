@@ -14,11 +14,6 @@ interface
 uses SysUtils, SyncObjs, Classes, Sockets, bsonDoc;
 
 type
-  TBSONDocumentsEnumerator=class //abstract
-  public
-    function Next(const Doc:IBSONDocument):boolean; virtual; abstract;
-  end;
-
   TMongoWire=class(TObject)
   private
     FSocket:TTcpClient;
@@ -62,7 +57,7 @@ type
     ); overload;
     procedure Insert(
       const Collection:WideString;
-      Docs:TBSONDocumentsEnumerator
+      const Docs: IBSONDocumentEnumerator
     ); overload;
     procedure Delete(
       const Collection:WideString;
@@ -77,7 +72,7 @@ type
     );
   end;
 
-  TMongoWireQuery=class(TBSONDocumentsEnumerator)
+  TMongoWireQuery=class(TObject)
   private
     FOwner:TMongoWire;
     FData:TStreamAdapter;
@@ -94,7 +89,7 @@ type
       QryObj:IBSONDocument;
       ReturnFieldSelector:IBSONDocument=nil;
       Flags:integer=0);
-    function Next(const Doc:IBSONDocument):boolean; override;
+    function Next(const Doc:IBSONDocument):boolean;
     property NumberToReturn:integer read FNumberToReturn write FNumberToReturn;
     property NumberToSkip:integer read FNumberToSkip write FNumberToSkip;//TODO: set?
   end;
@@ -452,7 +447,7 @@ begin
 end;
 
 procedure TMongoWire.Insert(const Collection: WideString;
-  Docs: TBSONDocumentsEnumerator);
+  const Docs: IBSONDocumentEnumerator);
 var
   d:IBSONDocument;
 begin
