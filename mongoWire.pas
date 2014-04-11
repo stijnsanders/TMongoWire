@@ -3,7 +3,7 @@
 TMongoWire: mongoWire.pas
 
 Copyright 2010-2014 Stijn Sanders
-Made available under terms described in file "COPYING"
+Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
 }
@@ -177,7 +177,8 @@ begin
   FSocket.RemotePort:=IntToStr(Port);
   FSocket.Open;
   if not FSocket.Connected then
-    raise EMongoConnectFailed.Create('MongoWire: failed to connect to "'+ServerName+':'+IntToStr(Port)+'"');
+    raise EMongoConnectFailed.Create(
+      'MongoWire: failed to connect to "'+ServerName+':'+IntToStr(Port)+'"');
   i:=1;
   l:=4;
   setsockopt(FSocket.Handle,IPPROTO_TCP,TCP_NODELAY,@i,l);
