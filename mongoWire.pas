@@ -16,60 +16,73 @@ uses SysUtils, SyncObjs, Classes, Sockets, bsonDoc;
 type
   TMongoWire=class(TObject)
   private
-    FSocket:TTcpClient;
-    FData:TStreamAdapter;
-    FWriteLock,FReadLock:TCriticalSection;
-    FQueue:array of record
-      RequestID:integer;
-      Data:TStreamAdapter;
+    FSocket: TTcpClient;
+    FData: TStreamAdapter;
+    FWriteLock, FReadLock: TCriticalSection;
+    FQueue: array of record
+      RequestID: integer;
+      Data: TStreamAdapter;
     end;
-    FQueueIndex,FRequestIndex:integer;
+    FQueueIndex, FRequestIndex: integer;
     procedure DataCString(const x: WideString);
-    procedure OpenMsg(OpCode,Flags:integer;const Collection:WideString);
-    function CloseMsg(Data:TStreamAdapter=nil):integer;//RequestID
-    procedure ReadMsg(RequestID:integer);
+    procedure OpenMsg(OpCode, Flags: integer; const Collection: WideString);
+    function CloseMsg(Data: TStreamAdapter = nil): integer;//RequestID
+    procedure ReadMsg(RequestID: integer);
   public
     constructor Create;
     destructor Destroy; override;
 
-    procedure Open(const ServerName:string='localhost';Port:integer=27017);
+    procedure Open(const ServerName: string = 'localhost';
+      Port: integer = 27017);
     procedure Close;
 
     function Get(
-      const Collection:WideString;
-      QryObj:IBSONDocument;
-      ReturnFieldSelector:IBSONDocument=nil
+      const Collection: WideString;
+      QryObj: IBSONDocument;
+      ReturnFieldSelector: IBSONDocument = nil
     ):IBSONDocument;
     //Query: see TMongoWireQuery.Create
     procedure Update(
-      const Collection:WideString;
-      const Selector,Doc:IBSONDocument;
-      Upsert:boolean=false;
-      MultiUpdate:boolean=false
+      const Collection: WideString;
+      const Selector, Doc: IBSONDocument;
+      Upsert: boolean = false;
+      MultiUpdate: boolean = false
     );
     procedure Insert(
-      const Collection:WideString;
-      const Doc:IBSONDocument
+      const Collection: WideString;
+      const Doc: IBSONDocument
     ); overload;
     procedure Insert(
-      const Collection:WideString;
-      const Docs:array of IBSONDocument
+      const Collection: WideString;
+      const Docs: array of IBSONDocument
     ); overload;
     procedure Insert(
-      const Collection:WideString;
+      const Collection: WideString;
       const Docs: IBSONDocumentEnumerator
     ); overload;
     procedure Delete(
-      const Collection:WideString;
-      const Selector:IBSONDocument;
-      SingleRemove:boolean=false
+      const Collection: WideString;
+      const Selector: IBSONDocument;
+      SingleRemove: boolean = false
     );
     function Ping: Boolean;
     procedure EnsureIndex(
-      const Database,Collection:WideString;
-      const Index:IBSONDocument;
-      const Options:IBSONDocument=nil
+      const Database,Collection: WideString;
+      const Index: IBSONDocument;
+      const Options: IBSONDocument = nil
     );
+
+    function RunCommand(
+      const Collection: WideString;
+      CmdObj: IBSONDocument
+    ):IBSONDocument;
+
+    function Count(const Collection: WideString): integer;
+    function Distinct(const Collection, Key: WideString;
+      Query: IBSONDocument=nil): OleVariant;
+
+    function Eval(const Collection, JSFn: WideString;
+      const Args: array of Variant; NoLock: boolean=false):OleVariant;
   end;
 
   TMongoWireQuery=class(TObject)
@@ -101,6 +114,7 @@ type
   EMongoNotConnected=class(EMongoException);
   EMongoTransferError=class(EMongoException);
   EMongoQueryError=class(EMongoException);
+  EMongoCommandError=class(EMongoException);
 
 const
   mongoWire_QueryFlag_TailableCursor  = $0002;
@@ -539,6 +553,46 @@ begin
   end;
 
   Insert(Database + '.' + mongoWire_Db_SystemIndexCollection, Document);
+end;
+
+function TMongoWire.RunCommand(const Collection: WideString;
+  CmdObj: IBSONDocument): IBSONDocument;
+begin
+  Result:=Get(Collection+'.$cmd',CmdObj);
+  if Result['ok']<>1 then
+    try
+      if VarIsNull(Result['errmsg']) then
+        raise EMongoCommandError.Create('Unspecified error with "'+
+          VarToStr(CmdObj.ToVarArray[0][0])+'"')
+      else
+        raise EMongoCommandError.Create('Command "'+
+          VarToStr(CmdObj.ToVarArray[0][0])+'" failed: '+
+          VarToStr(Result['errmsg']));
+    except
+      raise EMongoCommandError.Create('Command failed');
+    end;
+end;
+
+function TMongoWire.Count(const Collection: WideString): integer;
+begin
+  Result:=RunCommand(Collection,BSON(['count',Collection]))['n'];
+end;
+
+function TMongoWire.Distinct(const Collection, Key: WideString;
+  Query: IBSONDocument): OleVariant;
+var
+  d:IBSONDocument;
+begin
+  d:=BSON(['distinct',Collection,'key',Key]);
+  if Query<>nil then d['query']:=Query;
+  Result:=RunCommand(Collection,d)['values'];
+end;
+
+function TMongoWire.Eval(const Collection, JSFn: WideString;
+  const Args: array of Variant; NoLock: boolean): OleVariant;
+begin
+  Result:=RunCommand(Collection,BSON(['eval',bsonJavaScriptCodePrefix+
+    JSFn,'args',VarArrayOf(Args)]))['retval'];
 end;
 
 { TMongoWireQuery }
