@@ -133,11 +133,11 @@ uses ActiveX, Variants, WinSock;
 const
   OP_REPLY        = 1;
   OP_MSG          = 1000;
-  OP_UPDATE       = 2001;
-  OP_INSERT       = 2002;
+  //OP_UPDATE       = 2001;
+  //OP_INSERT       = 2002;
   OP_QUERY        = 2004;
   OP_GET_MORE     = 2005;
-  OP_DELETE       = 2006;
+  //OP_DELETE       = 2006;
   OP_KILL_CURSORS = 2007;
 
   MongoWireStartDataSize=$10000;
@@ -406,102 +406,68 @@ end;
 procedure TMongoWire.Update(const Collection: WideString; const Selector,
   Doc: IBSONDocument; Upsert, MultiUpdate: boolean);
 var
-  i:integer;
+  d:IBSONDocument;
 begin
   if Doc=nil then raise EMongoException.Create('MongoWire.Update: Doc required');
-  FWriteLock.Enter;
-  try
-    OpenMsg(OP_UPDATE,0,Collection);
-    i:=0;
-    if Upsert then inc(i,$0001);
-    if MultiUpdate then inc(i,$0002);
-    FData.Stream.Write(i,4);
-    if Selector=nil then
-     begin
-      i:=5;//empty document
-      FData.Stream.Write(i,4);
-      i:=0;//terminator
-      FData.Stream.Write(i,1);
-     end
-    else
-      (Selector as IPersistStream).Save(FData,false);
-    (Doc as IPersistStream).Save(FData,false);
-    CloseMsg;
-  finally
-    FWriteLock.Leave;
-  end;
+  d:=BSON(
+    ['q',Selector
+    ,'u',Doc
+    ]);
+  if Upsert then d['upsert']:=true;
+  if MultiUpdate then d['multi']:=true;
+  RunCommand(Collection,BSON(
+    ['update',Collection
+    ,'updates',VarArrayOf([d])
+    ]));
 end;
 
 procedure TMongoWire.Insert(const Collection: WideString;
   const Doc: IBSONDocument);
 begin
   if Doc=nil then raise EMongoException.Create('MongoWire.Insert: Doc required');
-  FWriteLock.Enter;
-  try
-    OpenMsg(OP_INSERT,0,Collection);
-    (Doc as IPersistStream).Save(FData,false);
-    CloseMsg;
-  finally
-    FWriteLock.Leave;
-  end;
+  RunCommand(Collection,BSON(
+    ['insert',Collection
+    ,'documents',VarArrayOf([Doc])
+    ]));
 end;
 
 procedure TMongoWire.Insert(const Collection: WideString;
   const Docs: array of IBSONDocument);
 var
-  i:integer;
+  i,l:integer;
+  v:OleVariant;
 begin
-  FWriteLock.Enter;
-  try
-    OpenMsg(OP_INSERT,0,Collection);
-    for i:=0 to Length(Docs)-1 do (Docs[i] as IPersistStream).Save(FData,false);
-    CloseMsg;
-  finally
-    FWriteLock.Leave;
-  end;
+  l:=Length(Docs);
+  v:=VarArrayCreate([0,l-1],varUnknown);
+  for i:=0 to l-1 do v[i]:=Docs[i];
+  RunCommand(Collection,BSON(
+    ['insert',Collection
+    ,'documents',v
+    ]));
 end;
 
 procedure TMongoWire.Insert(const Collection: WideString;
   const Docs: IBSONDocumentEnumerator);
 var
-  d:IBSONDocument;
+  d,dx:IBSONDocument;
 begin
-  FWriteLock.Enter;
-  try
-    OpenMsg(OP_INSERT,0,Collection);
-    d:=TBSONDocument.Create as IBSONDocument;
-    while Docs.Next(d) do (d as IPersistStream).Save(FData,false);
-    CloseMsg;
-  finally
-    FWriteLock.Leave;
-  end;
+  d:=BSON;
+  dx:=BSON(['insert',Collection,'documents',d]);
+  while Docs.Next(d) do RunCommand(Collection,dx);
 end;
 
 procedure TMongoWire.Delete(const Collection: WideString;
   const Selector: IBSONDocument; SingleRemove: boolean);
 var
-  i:integer;
+  l:integer;
 begin
-  FWriteLock.Enter;
-  try
-    OpenMsg(OP_DELETE,0,Collection);
-    i:=0;
-    if SingleRemove then inc(i,$0001);
-    FData.Stream.Write(i,4);
-    if Selector=nil then
-     begin
-      //raise? warning?
-      i:=5;//empty document
-      FData.Stream.Write(i,4);
-      i:=0;//terminator
-      FData.Stream.Write(i,1);
-     end
-    else
-      (Selector as IPersistStream).Save(FData,false);
-    CloseMsg;
-  finally
-    FWriteLock.Leave;
-  end;
+  if SingleRemove then l:=1 else l:=0;
+  RunCommand(Collection,BSON(
+    ['delete',Collection
+    ,'deletes','['
+      ,'q',Selector
+      ,'limit',l
+    ]));
 end;
 
 function TMongoWire.Ping: Boolean;
