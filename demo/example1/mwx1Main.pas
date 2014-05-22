@@ -42,7 +42,8 @@ uses
 {$R *.dfm}
 
 const
-  mwx1Collection='mwx1.items';
+  mwx1NameSpace='mwx1';
+  mwx1Collection='items';
 
   //see ListView1.Items[].SubItems below, keep according to ListView1.Columns
   siiAddress=0;
@@ -51,7 +52,7 @@ const
 
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
-  FMongoWire:=TMongoWire.Create;
+  FMongoWire:=TMongoWire.Create(mwx1NameSpace);
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
@@ -65,6 +66,7 @@ begin
     if ConnectionForm.ShowModal=mrOk then
       FMongoWire.Open(ConnectionForm.txtHost.Text,StrToInt(ConnectionForm.txtPort.Text))
     else
+
       raise Exception.Create('User abort');
 
     LoadItems;

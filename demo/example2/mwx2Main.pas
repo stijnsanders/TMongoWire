@@ -34,7 +34,8 @@ uses
 {$R *.dfm}
 
 const
-  FilesCollection='test.test2';//TODO: from ParamStr? from ini? registry?
+  FilesNameSpace='test';
+  FilesCollection='test2';//TODO: from ParamStr? from ini? registry?
 
   siType=0;
   siID=1;
@@ -45,7 +46,7 @@ var
   q:TMongoWireQuery;
   li:TListItem;
 begin
-  FDB:=TMongoWire.Create;
+  FDB:=TMongoWire.Create(FilesNameSpace);
   FDB.Open;//TODO: from ParamStr? from ini? registry?
 
   q:=TMongoWireQuery.Create(FDB);

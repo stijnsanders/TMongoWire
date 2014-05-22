@@ -18,18 +18,20 @@ type
   private
     FSocket: TTcpClient;
     FData: TStreamAdapter;
+    FNameSpace: WideString;
     FWriteLock, FReadLock: TCriticalSection;
     FQueue: array of record
       RequestID: integer;
       Data: TStreamAdapter;
     end;
     FQueueIndex, FRequestIndex: integer;
+    FWriteConcern: IBSONDocument;
     procedure DataCString(const x: WideString);
     procedure OpenMsg(OpCode, Flags: integer; const Collection: WideString);
     function CloseMsg(Data: TStreamAdapter = nil): integer;//RequestID
     procedure ReadMsg(RequestID: integer);
   public
-    constructor Create;
+    constructor Create(const NameSpace: Widestring);
     destructor Destroy; override;
 
     procedure Open(const ServerName: string = 'localhost';
@@ -67,13 +69,12 @@ type
     );
     function Ping: Boolean;
     procedure EnsureIndex(
-      const Database,Collection: WideString;
+      const Collection: WideString;
       const Index: IBSONDocument;
       const Options: IBSONDocument = nil
     );
 
     function RunCommand(
-      const Collection: WideString;
       CmdObj: IBSONDocument
     ):IBSONDocument;
 
@@ -83,6 +84,9 @@ type
 
     function Eval(const Collection, JSFn: WideString;
       const Args: array of Variant; NoLock: boolean=false):OleVariant;
+
+    property NameSpace: WideString read FNameSpace write FNameSpace;
+    property WriteConcern: IBSONDocument read FWriteConcern write FWriteConcern;
   end;
 
   TMongoWireQuery=class(TObject)
@@ -158,11 +162,12 @@ type
 
 { TMongoWire }
 
-constructor TMongoWire.Create;
+constructor TMongoWire.Create(const NameSpace: WideString);
 var
   m:TMemoryStream;
 begin
   inherited Create;
+  FNameSpace:=NameSpace;
   FSocket:=TTcpClient.Create(nil);
   m:=TMemoryStream.Create;
   m.Size:=MongoWireStartDataSize;//start keeping some data
@@ -171,6 +176,7 @@ begin
   FWriteLock:=TCriticalSection.Create;
   FReadLock:=TCriticalSection.Create;
   FRequestIndex:=1;
+  FWriteConcern:=nil;//:=BSON(['w',1]);
 end;
 
 destructor TMongoWire.Destroy;
@@ -179,6 +185,7 @@ begin
   (FData as IUnknown)._Release;//FData.Free;
   FWriteLock.Free;
   FReadLock.Free;
+  FWriteConcern:=nil;
   inherited;
 end;
 
@@ -230,7 +237,7 @@ begin
   p.OpCode:=OpCode;
   p.Flags:=Flags;
   FData.Stream.Position:=20;//SizeOf first part of TMongoWireMsgHeader
-  if OpCode<>OP_KILL_CURSORS then DataCString(Collection);
+  if OpCode<>OP_KILL_CURSORS then DataCString(FNameSpace+'.'+Collection);
 end;
 
 function TMongoWire.CloseMsg(Data:TStreamAdapter):integer;
@@ -379,7 +386,8 @@ begin
      end
     else
       (QryObj as IPersistStream).Save(FData,false);
-    if ReturnFieldSelector<>nil then (ReturnFieldSelector as IPersistStream).Save(FData,false);
+    if ReturnFieldSelector<>nil then
+      (ReturnFieldSelector as IPersistStream).Save(FData,false);
     ReadMsg(CloseMsg(FData));
 
     p:=(FData.Stream as TMemoryStream).Memory;
@@ -415,9 +423,10 @@ begin
     ]);
   if Upsert then d['upsert']:=true;
   if MultiUpdate then d['multi']:=true;
-  RunCommand(Collection,BSON(
+  RunCommand(BSON(
     ['update',Collection
     ,'updates',VarArrayOf([d])
+    ,'writeConcern',FWriteConcern
     ]));
 end;
 
@@ -425,9 +434,10 @@ procedure TMongoWire.Insert(const Collection: WideString;
   const Doc: IBSONDocument);
 begin
   if Doc=nil then raise EMongoException.Create('MongoWire.Insert: Doc required');
-  RunCommand(Collection,BSON(
+  RunCommand(BSON(
     ['insert',Collection
     ,'documents',VarArrayOf([Doc])
+    ,'writeConcern',FWriteConcern
     ]));
 end;
 
@@ -440,9 +450,10 @@ begin
   l:=Length(Docs);
   v:=VarArrayCreate([0,l-1],varUnknown);
   for i:=0 to l-1 do v[i]:=Docs[i];
-  RunCommand(Collection,BSON(
+  RunCommand(BSON(
     ['insert',Collection
     ,'documents',v
+    ,'writeConcern',FWriteConcern
     ]));
 end;
 
@@ -452,8 +463,12 @@ var
   d,dx:IBSONDocument;
 begin
   d:=BSON;
-  dx:=BSON(['insert',Collection,'documents',d]);
-  while Docs.Next(d) do RunCommand(Collection,dx);
+  dx:=BSON(
+    ['insert',Collection
+    ,'documents',d
+    ,'writeConcern',FWriteConcern
+    ]);
+  while Docs.Next(d) do RunCommand(dx);
 end;
 
 procedure TMongoWire.Delete(const Collection: WideString;
@@ -462,24 +477,31 @@ var
   l:integer;
 begin
   if SingleRemove then l:=1 else l:=0;
-  RunCommand(Collection,BSON(
+  RunCommand(BSON(
     ['delete',Collection
-    ,'deletes','['
-      ,'q',Selector
+    ,'deletes',VarArrayOf([BSON(
+      ['q',Selector
       ,'limit',l
+      ])])
+    ,'writeConcern',FWriteConcern
     ]));
 end;
 
 function TMongoWire.Ping: Boolean;
+var
+  ns:WideString;
 begin
+  ns:=FNameSpace;
   try
-    Result := Get('admin.$cmd', BSON(['ping', 1]))['ok'] = 1;
+    FNameSpace:='admin';
+    Result := Get('$cmd', BSON(['ping', 1]))['ok'] = 1;
   except
     Result := False;
   end;
+  FNameSpace:=ns;
 end;
 
-procedure TMongoWire.EnsureIndex(const Database, Collection: WideString;
+procedure TMongoWire.EnsureIndex(const Collection: WideString;
   const Index: IBSONDocument; const Options: IBSONDocument=nil);
 var
   Document: IBSONDocument;
@@ -488,7 +510,7 @@ var
   IndexArray: Variant;
 begin
   Document := BSON([
-    'ns', Database + '.' + Collection,
+    'ns', FNameSpace + '.' + Collection,
     'key', Index
   ]);
   
@@ -498,7 +520,7 @@ begin
     for I := VarArrayLowBound(IndexArray, 1) to VarArrayHighBound(IndexArray, 1) do
       Name := Name + VarToStr(VarArrayGet(IndexArray, [I, 0])) + '_' + VarToStr(VarArrayGet(IndexArray, [I, 1]));
 
-    if Length(Database + '.' + Collection + '.' + Name) > 128 then
+    if Length(FNameSpace + '.' + Collection + '.' + Name) > 128 then
       raise Exception.Create('Index name too long, please specify a custom name using the name option.');
 
     Document['name'] := Name;
@@ -518,30 +540,32 @@ begin
       Document['v'] := Options['v'];
   end;
 
-  Insert(Database + '.' + mongoWire_Db_SystemIndexCollection, Document);
+  Insert(FNameSpace + '.' + mongoWire_Db_SystemIndexCollection, Document);
 end;
 
-function TMongoWire.RunCommand(const Collection: WideString;
-  CmdObj: IBSONDocument): IBSONDocument;
+function TMongoWire.RunCommand(CmdObj: IBSONDocument): IBSONDocument;
 begin
-  Result:=Get(Collection+'.$cmd',CmdObj);
+  Result:=Get('$cmd',CmdObj);
   if Result['ok']<>1 then
     try
       if VarIsNull(Result['errmsg']) then
         raise EMongoCommandError.Create('Unspecified error with "'+
-          VarToStr(CmdObj.ToVarArray[0][0])+'"')
+          VarToStr(CmdObj.ToVarArray[0,0])+'"')
       else
         raise EMongoCommandError.Create('Command "'+
-          VarToStr(CmdObj.ToVarArray[0][0])+'" failed: '+
+          VarToStr(CmdObj.ToVarArray[0,0])+'" failed: '+
           VarToStr(Result['errmsg']));
     except
-      raise EMongoCommandError.Create('Command failed');
+      on EMongoCommandError do
+        raise;
+      on Exception do
+        raise EMongoCommandError.Create('Command failed');
     end;
 end;
 
 function TMongoWire.Count(const Collection: WideString): integer;
 begin
-  Result:=RunCommand(Collection,BSON(['count',Collection]))['n'];
+  Result:=RunCommand(BSON(['count',FNameSpace+'.'+Collection]))['n'];
 end;
 
 function TMongoWire.Distinct(const Collection, Key: WideString;
@@ -549,15 +573,15 @@ function TMongoWire.Distinct(const Collection, Key: WideString;
 var
   d:IBSONDocument;
 begin
-  d:=BSON(['distinct',Collection,'key',Key]);
+  d:=BSON(['distinct',FNameSpace+'.'+Collection,'key',Key]);
   if Query<>nil then d['query']:=Query;
-  Result:=RunCommand(Collection,d)['values'];
+  Result:=RunCommand(d)['values'];
 end;
 
 function TMongoWire.Eval(const Collection, JSFn: WideString;
   const Args: array of Variant; NoLock: boolean): OleVariant;
 begin
-  Result:=RunCommand(Collection,BSON(['eval',bsonJavaScriptCodePrefix+
+  Result:=RunCommand(BSON(['eval',bsonJavaScriptCodePrefix+
     JSFn,'args',VarArrayOf(Args)]))['retval'];
 end;
 

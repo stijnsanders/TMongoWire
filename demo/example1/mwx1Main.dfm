@@ -15,8 +15,8 @@ object MainForm: TMainForm
   OnDestroy = FormDestroy
   OnShow = FormShow
   DesignSize = (
-    378
-    337)
+    370
+    326)
   PixelsPerInch = 96
   TextHeight = 13
   object lblCount: TLabel
