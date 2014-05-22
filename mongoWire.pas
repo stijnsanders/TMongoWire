@@ -540,7 +540,7 @@ begin
       Document['v'] := Options['v'];
   end;
 
-  Insert(FNameSpace + '.' + mongoWire_Db_SystemIndexCollection, Document);
+  Insert(mongoWire_Db_SystemIndexCollection, Document);
 end;
 
 function TMongoWire.RunCommand(CmdObj: IBSONDocument): IBSONDocument;
@@ -565,7 +565,7 @@ end;
 
 function TMongoWire.Count(const Collection: WideString): integer;
 begin
-  Result:=RunCommand(BSON(['count',FNameSpace+'.'+Collection]))['n'];
+  Result:=RunCommand(BSON(['count',Collection]))['n'];
 end;
 
 function TMongoWire.Distinct(const Collection, Key: WideString;
@@ -573,7 +573,7 @@ function TMongoWire.Distinct(const Collection, Key: WideString;
 var
   d:IBSONDocument;
 begin
-  d:=BSON(['distinct',FNameSpace+'.'+Collection,'key',Key]);
+  d:=BSON(['distinct',Collection,'key',Key]);
   if Query<>nil then d['query']:=Query;
   Result:=RunCommand(d)['values'];
 end;
