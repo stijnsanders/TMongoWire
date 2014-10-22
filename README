@@ -23,7 +23,7 @@ bsonDoc.pas
     Use '[' and ']' to created embedded documents,
 	  e.g.: BSON(['x','[','$gt',7,']']);
     Use VarArrayOf or 1-dimensional variant arrays to add arrays,
-	  e.g.: BSON(['x',VarArrayOf(1,2,3)]);
+	  e.g.: BSON(['x',VarArrayOf([1,2,3])]);
 	  
   function BSONenum: IBSONDocumentEnumerator;
     See below

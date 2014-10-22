@@ -6,7 +6,8 @@ uses
   bsonDoc in '..\..\bsonDoc.pas',
   mongoID in '..\..\mongoID.pas',
   mongoStream in '..\..\mongoStream.pas',
-  mongoWire in '..\..\mongoWire.pas';
+  mongoWire in '..\..\mongoWire.pas',
+  mongoAuth in '..\..\mongoAuth.pas';
 
 {$R *.res}
 

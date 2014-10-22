@@ -11,12 +11,12 @@ unit mongoWire;
 
 interface
 
-uses SysUtils, SyncObjs, Classes, Sockets, bsonDoc;
+uses SysUtils, SyncObjs, Classes, simpleSock, bsonDoc;
 
 type
   TMongoWire=class(TObject)
   private
-    FSocket: TTcpClient;
+    FSocket: TTcpSocket;
     FData: TStreamAdapter;
     FNameSpace: WideString;
     FWriteLock, FReadLock: TCriticalSection;
@@ -168,7 +168,7 @@ var
 begin
   inherited Create;
   FNameSpace:=NameSpace;
-  FSocket:=TTcpClient.Create(nil);
+  FSocket:=TTcpSocket.Create;
   m:=TMemoryStream.Create;
   m.Size:=MongoWireStartDataSize;//start keeping some data
   FData:=TStreamAdapter.Create(m,soOwned);
@@ -193,10 +193,8 @@ procedure TMongoWire.Open(const ServerName: string; Port: integer);
 var
   i,l:integer;
 begin
-  FSocket.Close;
-  FSocket.RemoteHost:=ServerName;
-  FSocket.RemotePort:=IntToStr(Port);
-  FSocket.Open;
+  FSocket.Disconnect;
+  FSocket.Connect(ServerName,Port);
   if not FSocket.Connected then
     raise EMongoConnectFailed.Create(
       'MongoWire: failed to connect to "'+ServerName+':'+IntToStr(Port)+'"');
@@ -207,7 +205,7 @@ end;
 
 procedure TMongoWire.Close;
 begin
-  FSocket.Close;
+  FSocket.Disconnect;
 end;
 
 procedure TMongoWire.DataCString(const x:WideString);
