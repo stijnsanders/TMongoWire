@@ -9,6 +9,8 @@ https://github.com/stijnsanders/TMongoWire
 }
 unit mongoStream;
 
+{$D-}
+
 interface
 
 uses Classes, mongoWire, bsonDoc;

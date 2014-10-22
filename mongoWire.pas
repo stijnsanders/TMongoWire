@@ -9,6 +9,8 @@ https://github.com/stijnsanders/TMongoWire
 }
 unit mongoWire;
 
+{$D-}
+
 interface
 
 uses SysUtils, SyncObjs, Classes, simpleSock, bsonDoc;

@@ -3,6 +3,7 @@ program mwx2;
 uses
   Forms,
   mwx2Main in 'mwx2Main.pas' {Form1},
+  simpleSock in '..\..\simpleSock.pas',
   bsonDoc in '..\..\bsonDoc.pas',
   mongoID in '..\..\mongoID.pas',
   mongoStream in '..\..\mongoStream.pas',

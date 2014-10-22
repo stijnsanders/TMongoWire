@@ -10,6 +10,7 @@ https://github.com/stijnsanders/TMongoWire
 unit bsonDoc;
 
 {$WARN SYMBOL_PLATFORM OFF}
+{$D-}
 
 interface
 

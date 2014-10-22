@@ -9,6 +9,8 @@ https://github.com/stijnsanders/TMongoWire
 }
 unit mongoAuth;
 
+{$D-}
+
 interface
 
 uses SysUtils, mongoWire;
