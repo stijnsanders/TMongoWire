@@ -58,11 +58,6 @@ const
   mongoStreamDefaultPrefix='fs';
   mongoStreamDefaultChunkSize=$40000;//256KB
 
-function IsNull(x,def:OleVariant):OleVariant;
-begin
-  if VarIsNull(x) then Result:=def else Result:=x;
-end;
-
 { TMongoStream }
 
 constructor TMongoStream.Create(db: TMongoWire; const prefix: WideString;
@@ -88,9 +83,15 @@ begin
 end;
 
 procedure TMongoStream.InitData;
+var
+  v:OleVariant;
 begin
   Fsize:=Fdata[mongoStreamLengthField];
-  FchunkSize:=IsNull(Fdata[mongoStreamChunkSizeField],mongoStreamDefaultChunkSize);
+  v:=Fdata[mongoStreamChunkSizeField];
+  if VarIsNumeric(v) then
+    FchunkSize:=v
+  else
+    FchunkSize:=mongoStreamDefaultChunkSize;
   FchunkIndex:=0;
   Fchunk:=nil;
   //TODO: detect any change to data?
@@ -118,10 +119,11 @@ var
   v:OleVariant;
   p:PAnsiChar;
 begin
-  if Fchunk=nil then Fchunk:=Fdb.Get(Fprefix+mongoStreamChunksSuffix,BSON([
-    mongoStreamFilesIDField,Fdata[mongoStreamIDField],
-    mongoStreamNField,FchunkIndex
-  ]));
+  if Fchunk=nil then
+    Fchunk:=Fdb.Get(Fprefix+mongoStreamChunksSuffix,BSON([
+      mongoStreamFilesIDField,Fdata[mongoStreamIDField],
+      mongoStreamNField,FchunkIndex
+    ]));
   if FchunkPos+Count>FchunkSize then Result:=FchunkSize-FchunkPos else Result:=Count;
   if FchunkIndex*FchunkSize+FchunkPos+Result>Fsize then Result:=Fsize-FchunkIndex*FchunkSize-FchunkPos;
   if Result<>0 then
