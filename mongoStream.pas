@@ -104,7 +104,8 @@ begin
     soBeginning:Result:=Offset;
     soCurrent:Result:=FchunkIndex*FchunkSize+FchunkPos+Offset;
     soEnd:Result:=FSize-Offset;
-    else raise Exception.Create('TMongoStream.Seek unsopprted offset parameter');
+    else
+      raise EMongoException.Create('TMongoStream.Seek unsopported offset parameter');
   end;
   i:=FchunkIndex;
   FchunkIndex:=Result div FchunkSize;
@@ -184,12 +185,12 @@ end;
 procedure TMongoStream.SetSize(NewSize: Integer);
 begin
   //inherited;
-  raise Exception.Create('TMongoStream is read-only');
+  raise EMongoException.Create('TMongoStream is read-only');
 end;
 
 function TMongoStream.Write(const Buffer; Count: Integer): Longint;
 begin
-  raise Exception.Create('TMongoStream is read-only');
+  raise EMongoException.Create('TMongoStream is read-only');
 end;
 
 class function TMongoStream.Add(db: TMongoWire; prefix: WideString;
@@ -199,9 +200,12 @@ var
   v:OleVariant;
   p:PAnsiChar;
 begin
-  if prefix='' then prefix:=mongoStreamDefaultPrefix;
-  if stream.Size>$80000000 then raise Exception.Create('TMongoStream max 2GB supported');
-  info[mongoStreamLengthField]:=integer(stream.Size);
+  if stream.Size>$80000000 then
+    raise EMongoException.Create('TMongoStream.Add: max 2GB supported');
+  if info=nil then
+    raise EMongoException.Create('TMongoStream.Add: info document required');
+  if stream=nil then
+    raise EMongoException.Create('TMongoStream.Add: streal required');
   if VarIsNull(info[mongoStreamIDField]) then
    begin
     Result:=mongoObjectId;
@@ -209,6 +213,7 @@ begin
    end
   else
     Result:=info[mongoStreamIDField];
+  info[mongoStreamLengthField]:=integer(stream.Size);
   if VarIsNull(info[mongoStreamChunkSizeField]) then
    begin
     chunkSize:=mongoStreamDefaultChunkSize;
@@ -219,6 +224,7 @@ begin
   info[mongoStreamUploadDateField]:=VarFromDateTime(Now);
   //TODO: 'md5'?
   //assert db.Connected
+  if prefix='' then prefix:=mongoStreamDefaultPrefix;
   db.Insert(prefix+mongoStreamFilesSuffix,info);
   stream.Position:=0;//?
   v:=VarArrayCreate([0,chunkSize-1],varByte);
