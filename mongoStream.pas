@@ -216,13 +216,14 @@ begin
   else
     Result:=info[mongoStreamIDField];
   info[mongoStreamLengthField]:=integer(stream.Size);
-  if VarIsNull(info[mongoStreamChunkSizeField]) then
+  v:=info[mongoStreamChunkSizeField];
+  if VarIsNumeric(v) then
+    chunkSize:=v
+  else
    begin
     chunkSize:=mongoStreamDefaultChunkSize;
     info[mongoStreamChunkSizeField]:=chunkSize;
-   end
-  else
-    chunkSize:=info[mongoStreamChunkSizeField];
+   end;
   info[mongoStreamUploadDateField]:=VarFromDateTime(Now);
   //TODO: 'md5'?
   //assert db.Connected
