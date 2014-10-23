@@ -56,7 +56,7 @@ uses SysUtils, Variants, mongoID;
 const
   //do not localize
   mongoStreamDefaultPrefix='fs';
-  mongoStreamDefaultChunkSize=$40000;//256KB
+  mongoStreamDefaultChunkSize=$3FC00;//255KiB
 
 { TMongoStream }
 
