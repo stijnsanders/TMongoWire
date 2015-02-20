@@ -18,8 +18,8 @@ uses SysUtils, mongoWire;
 function MD5Hash(x:UTF8String):UTF8String;
 
 procedure MongoWireAuthenticate(MongoWire:TMongoWire;
-  const Collection,UserName,Password:WideString);
-procedure MongoWireLogout(MongoWire:TMongoWire;const Collection:WideString);
+  const UserName,Password:WideString);
+procedure MongoWireLogout(MongoWire:TMongoWire);
 
 type
   EMongoAuthenticationFailed=class(EMongoException);
@@ -146,25 +146,25 @@ begin
 end;
 
 procedure MongoWireAuthenticate(MongoWire:TMongoWire;
-  const Collection,UserName,Password:WideString);
+  const UserName,Password:WideString);
 var
   nonce:WideString;
 begin
-  nonce:=MongoWire.Get(Collection+'.$cmd',BSON(['getnonce',1]))['nonce'];
-  if MongoWire.Get(Collection+'.$cmd',BSON([
+  nonce:=MongoWire.Get('$cmd',BSON(['getnonce',1]))['nonce'];
+  if MongoWire.Get('$cmd',BSON([
     'authenticate',1,
-    'user',UserName,
     'nonce',nonce,
+    'user',UserName,
     'key',MD5Hash(UTF8Encode(nonce+UserName+
       MD5Hash(UTF8Encode(UserName+':mongo:'+Password))))
   ]))['ok']<>1 then
     raise EMongoAuthenticationFailed.Create(
-      'MongoWire: failed to authenticate to "'+Collection+'" as "'+UserName+'"');
+      'MongoWire: failed to authenticate as "'+UserName+'"');
 end;
 
-procedure MongoWireLogout(MongoWire:TMongoWire;const Collection:WideString);
+procedure MongoWireLogout(MongoWire:TMongoWire);
 begin
-  if MongoWire.Get(Collection+'.$cmd',BSON(['logout',1]))['ok']<>1 then
+  if MongoWire.Get('$cmd',BSON(['logout',1]))['ok']<>1 then
     raise EMongoException.Create('MongoWire: logout failed');
 end;
 
