@@ -2,7 +2,7 @@
 
 TMongoWire: bsonDoc.pas
 
-Copyright 2010-2014 Stijn Sanders
+Copyright 2010-2015 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
@@ -119,6 +119,7 @@ type
 }
 function BSON: IBSONDocument; overload;
 function BSON(x: array of OleVariant): IBSONDocument; overload;
+function BSON(x: OleVariant): IBSONDocument; overload;
 
 type
   IBSONDocumentEnumerator = interface(IUnknown)
@@ -261,10 +262,10 @@ begin
     FGotIndex:=FElementIndex;
     inc(FElementIndex);
     FElements[FGotSorted].SortIndex:=FGotIndex;
-    FElements[FGotIndex].LoadIndex:=FLoadIndex;
     FElements[FGotIndex].Key:=Key;
    end;
   FElements[FGotIndex].Value:=Value;
+  FElements[FGotIndex].LoadIndex:=FLoadIndex;
   //TODO: if VarType(Value)=varEmpty then drop element
   FDirty:=true;
 end;
@@ -1102,11 +1103,25 @@ end;
 procedure TBSONDocument.Clear;
 var
   i:integer;
+  uu:IUnknown;
+  d:IBSONDocument;
+  e:IBSONDocumentEnumerator;
 begin
-  FDirty:=false;//?
-  for i:=0 to FElementIndex-1 do VarClear(FElements[i].Value);
-  //TODO: if IBSONDocument then Clear?
-  FElementIndex:=0;//?
+  FDirty:=false;
+  for i:=0 to FElementIndex-1 do
+    if VarType(FElements[i].Value)=varUnknown then
+     begin
+      uu:=IUnknown(FElements[i].Value);
+      if uu.QueryInterface(IID_IBSONDocument,d)=S_OK then
+        d.Clear
+      else
+      if uu.QueryInterface(IID_IBSONDocumentEnumerator,e)=S_OK then
+        e.SetStream(nil)
+      else
+        VarClear(FElements[i].Value);
+     end
+    else
+      VarClear(FElements[i].Value);
   FGotMatch:=false;
 end;
 
@@ -1183,6 +1198,11 @@ begin
   //TODO: Result.FIsDirty:=false?
 end;
 
+function BSON(x: OleVariant): IBSONDocument; overload;
+begin
+  Result:=IUnknown(x) as IBSONDocument;
+end;
+
 { TBSONDocumentEnumerator }
 
 procedure TBSONDocumentEnumerator.AfterConstruction;
@@ -1191,7 +1211,7 @@ begin
   FData:=nil;
   FPosIndex:=0;
   FPosSize:=0;
-  FPosCurrent:=-1;
+  FPosCurrent:=0;
 end;
 
 destructor TBSONDocumentEnumerator.Destroy;
@@ -1205,7 +1225,7 @@ procedure TBSONDocumentEnumerator.SetStream(const stm: IStream);
 begin
   FData:=stm;
   FPosIndex:=0;
-  FPosCurrent:=-1;
+  FPosCurrent:=0;
 end;
 
 procedure TBSONDocumentEnumerator.Add(pos: int64);
@@ -1216,6 +1236,7 @@ begin
     SetLength(FPos,FPosSize);
    end;
   FPos[FPosIndex]:=pos;
+  inc(FPosIndex);
 end;
 
 function TBSONDocumentEnumerator.GetCount: integer;
@@ -1228,12 +1249,12 @@ var
   p:int64;
 begin
   //TODO: detect dirty (deep!), then update into stream??
-  if FPosCurrent>=FPosIndex then Result:=false else
+  if (FPosCurrent<0) or (FPosCurrent>=FPosIndex) then Result:=false else
    begin
     OleCheck(FData.Seek(FPos[FPosCurrent],soFromBeginning,p));
     (doc as IPersistStream).Load(FData);
-    Result:=true;
     inc(FPosCurrent);
+    Result:=true;
    end;
 end;
 
