@@ -361,6 +361,7 @@ var //outside of stmReadCString to recycle memory
     if ReuseDoc and (VarType(FElements[FGotIndex].Value)=varUnknown) and
       (IUnknown(FElements[FGotIndex].Value).QueryInterface(IID_IBSONDocument,dd)=S_OK) then
      begin
+      FElements[FGotIndex].LoadIndex:=FLoadIndex;
       (dd as IPersistStream).Load(stm);
       Result:=true;
      end
@@ -389,6 +390,7 @@ var //outside of stmReadCString to recycle memory
     if (VarType(v)=varUnknown) and
       (IUnknown(v).QueryInterface(IID_IBSONDocumentEnumerator,e)=S_OK) then
      begin
+      FElements[FGotIndex].LoadIndex:=FLoadIndex;
       e.SetStream(stm);
       repeat
         OleCheck(stm.Seek(0,soFromCurrent,p));
