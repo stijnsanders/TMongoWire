@@ -10,6 +10,7 @@ https://github.com/stijnsanders/TMongoWire
 unit mongoWire;
 
 {$D-}
+{$L-}
 
 interface
 
@@ -226,6 +227,7 @@ end;
 procedure TMongoWire.OpenMsg(OpCode,Flags:integer;const Collection:WideString);
 var
   p:PMongoWireMsgHeader;
+  a,b:integer;
 begin
   //assert caller did FQueueLock !!!
   if not FSocket.Connected then
@@ -237,7 +239,8 @@ begin
   p.OpCode:=OpCode;
   p.Flags:=Flags;
   FData.Stream.Position:=20;//SizeOf first part of TMongoWireMsgHeader
-  if OpCode<>OP_KILL_CURSORS then DataCString(FNameSpace+'.'+Collection);
+  if OpCode<>OP_KILL_CURSORS then
+    DataCString(FNameSpace+'.'+Collection);
 end;
 
 function TMongoWire.CloseMsg(Data:TStreamAdapter):integer;

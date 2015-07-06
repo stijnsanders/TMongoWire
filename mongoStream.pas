@@ -10,6 +10,7 @@ https://github.com/stijnsanders/TMongoWire
 unit mongoStream;
 
 {$D-}
+{$L-}
 
 interface
 

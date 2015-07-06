@@ -10,6 +10,7 @@ https://github.com/stijnsanders/TMongoWire
 unit mongoAuth;
 
 {$D-}
+{$L-}
 
 interface
 

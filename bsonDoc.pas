@@ -11,6 +11,7 @@ unit bsonDoc;
 
 {$WARN SYMBOL_PLATFORM OFF}
 {$D-}
+{$L-}
 
 interface
 
@@ -317,7 +318,7 @@ var //outside of stmReadCString to recycle memory
     s:AnsiString;
   begin
     stmRead(@l,4);
-    if l=1 then s:='' else
+    if l<1 then s:='' else
      begin
       SetLength(s,l-1);
       stmRead(@s[1],l-1);
@@ -886,7 +887,7 @@ begin
         i:=bsonBinary;
         stmWrite(@i,1);
         stmWriteCString(key);
-        j:=VarArrayHighBound(v,1)-VarArrayLowBound(v,1);
+        j:=VarArrayHighBound(v,1)-VarArrayLowBound(v,1)+1;
         stmWrite(@j,4);
         i:=bsonBinaryGeneric;
         stmWrite(@i,1);
