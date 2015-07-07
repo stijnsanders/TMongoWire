@@ -227,7 +227,6 @@ end;
 procedure TMongoWire.OpenMsg(OpCode,Flags:integer;const Collection:WideString);
 var
   p:PMongoWireMsgHeader;
-  a,b:integer;
 begin
   //assert caller did FQueueLock !!!
   if not FSocket.Connected then

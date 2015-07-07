@@ -375,32 +375,34 @@ end;
 
 function Base64Decode(const x:UTF8String):UTF8String;
 var
-  i,j,k,l:cardinal;
-  a,b,c,d:byte;
+  i,j,k,l,m:cardinal;
+  n:array[0..3] of byte;
 begin
   l:=Length(x);
   if l<4 then Result:='' else
    begin
     k:=(Length(x) div 4)*3;
     SetLength(Result,k);
-    if x[l  ]='=' then dec(k);
-    if x[l-1]='=' then dec(k);
+    if x[l]='=' then begin dec(k); dec(l); end;
+    if x[l]='=' then begin dec(k); dec(l); end;
     i:=0;
     j:=0;
     while i<l do
      begin
-      inc(i);a:=0;while (a<64) and (x[i]<>Base64Codes[a]) do inc(a);
-      inc(i);b:=0;while (b<64) and (x[i]<>Base64Codes[b]) do inc(b);
-      inc(i);c:=0;while (c<64) and (x[i]<>Base64Codes[c]) do inc(c);
-      inc(i);d:=0;while (d<64) and (x[i]<>Base64Codes[d]) do inc(d);
-      if i=l then
+      m:=0;
+      while m<>4 do
        begin
-        if c=64 then c:=0;
-        if d=64 then d:=0;
+        if i=l then n[m]:=0 else
+         begin
+          inc(i);
+          n[m]:=0;
+          while (n[m]<64) and (x[i]<>Base64Codes[n[m]]) do inc(n[m]);
+         end;
+        inc(m);
        end;
-      inc(j);Result[j]:=AnsiChar((a shl 2) or (b shr 4));
-      inc(j);Result[j]:=AnsiChar((b shl 4) or (c shr 2));
-      inc(j);Result[j]:=AnsiChar((c shl 6) or (d      ));
+      inc(j);Result[j]:=AnsiChar((n[0] shl 2) or (n[1] shr 4));
+      inc(j);Result[j]:=AnsiChar((n[1] shl 4) or (n[2] shr 2));
+      inc(j);Result[j]:=AnsiChar((n[2] shl 6) or (n[3]      ));
      end;
     SetLength(Result,k);
    end;
@@ -487,11 +489,11 @@ begin
            begin
             //StrToInt?
             k:=0;
-            inc(i,2);
-            while (i<j) do
+            inc(i);//'='
+            while i<j do
              begin
-              k:=k*10+(byte(p[i]) and $F);
               inc(i);
+              k:=k*10+(byte(p[i]) and $F);
              end;
            end;
           //else raise?
@@ -508,6 +510,7 @@ begin
     raise EMongoAuthenticationFailed.CreateFmt(ErrMsg,[UserName]);
   //TODO: store server nonce, enforce unicity
 
+
   //calculate client proof
   m3:='c=biws'//'c='+Base64Encode('n,,')
     +',r='+r;
@@ -520,7 +523,6 @@ begin
 
   //client-final message
   m3:=m3+',p='+Base64Encode(t);
-  m4:='v='+Base64Encode(HMAC_SHA1(HMAC_SHA1(s,'Server Key'),u));
 
   l:=Length(m3);
   v:=VarArrayCreate([0,l-1],varByte);
@@ -537,7 +539,8 @@ begin
     'conversationId',b['conversationId']
   ]));
 
-  raise Exception.Create(BsonToJson(b));
+  //Debug
+  if VarIsNull(b['conversationId']) then raise Exception.Create(BsonToJson(b));
 
   if VarIsNull(b['conversationId']) then
     raise EMongoAuthenticationFailed.CreateFmt(ErrMsg,[UserName]);
@@ -568,10 +571,6 @@ begin
     //assert b['done']=true
     //assert b['payload'] is an empty byte vararray
    end;
-
-  //DEBUG
-  raise Exception.Create(BsonToJson(b));
-
 end;
 
 procedure MongoWireLogout(MongoWire:TMongoWire);

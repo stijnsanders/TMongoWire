@@ -5,6 +5,7 @@ interface
 uses SysUtils, Classes;
 
 {$D-}
+{$L-}
 
 type
   PSocketAddress=^TSocketAddress;
