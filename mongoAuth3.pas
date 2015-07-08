@@ -9,6 +9,9 @@ https://github.com/stijnsanders/TMongoWire
 }
 unit mongoAuth3;
 
+{$D-}
+{$L-}
+
 interface
 
 uses mongoWire;
@@ -464,45 +467,45 @@ begin
 
   //server-first message
   v:=b['payload'];
-  l:=VarArrayHighBound(v,1)-VarArrayLowBound(v,1);
-
-  r:='';//default
-  s:='';//default
-  k:=0;//default
+  l:=VarArrayHighBound(v,1)-VarArrayLowBound(v,1)+1;
   p:=VarArrayLock(v);
   try
     SetLength(m2,l);
     Move(p^,m2[1],l);
-    i:=0;
-    while (i+1<l) do
-      if p[i+1]<>'=' then i:=l else
-       begin
-        j:=i+2;
-        while (j<l) and (p[j]<>',') do inc(j);
-        //assert p[i]='=';
-        case p[i] of
-          'r'://combined nonces
-            r:=Copy(p,i+3,j-i-2);
-          's'://salt
-            s:=Copy(p,i+3,j-i-2);
-          'i'://iteration count
-           begin
-            //StrToInt?
-            k:=0;
-            inc(i);//'='
-            while i<j do
-             begin
-              inc(i);
-              k:=k*10+(byte(p[i]) and $F);
-             end;
-           end;
-          //else raise?
-        end;
-        i:=j+1;
-       end;
   finally
     VarArrayUnlock(v);
   end;
+
+  r:='';//default
+  s:='';//default
+  k:=0;//default
+  i:=1;
+  while (i<=l) do
+    if m2[i+1]<>'=' then i:=l else
+     begin
+      j:=i+2;
+      while (j<l) and (m2[j]<>',') do inc(j);
+      //assert m2[i]='=';
+      case m2[i] of
+        'r'://combined nonces
+          r:=Copy(m2,i+2,j-i-2);
+        's'://salt
+          s:=Copy(m2,i+2,j-i-2);
+        'i'://iteration count
+         begin
+          //StrToInt?
+          k:=0;
+          inc(i);//'='
+          while i<j do
+           begin
+            inc(i);
+            k:=k*10+(byte(m2[i]) and $F);
+           end;
+         end;
+        //else raise?
+      end;
+      i:=j+1;
+     end;
 
   if (r='') or (s='') or (k=0) then
     raise EMongoAuthenticationFailed.CreateFmt(ErrMsg,[UserName]);
@@ -539,22 +542,19 @@ begin
     'conversationId',b['conversationId']
   ]));
 
-  //Debug
-  if VarIsNull(b['conversationId']) then raise Exception.Create(BsonToJson(b));
-
   if VarIsNull(b['conversationId']) then
     raise EMongoAuthenticationFailed.CreateFmt(ErrMsg,[UserName]);
 
   //server-final message
   v:=b['payload'];
-  l:=VarArrayHighBound(v,1)-VarArrayLowBound(v,1);
+  l:=VarArrayHighBound(v,1)-VarArrayLowBound(v,1)+1;
   p:=VarArrayLock(v);
   try
+    SetLength(t,l);
     Move(p^,t[1],l);
   finally
     VarArrayUnlock(v);
   end;
-  //...
 
   m4:='v='+Base64Encode(HMAC_SHA1(HMAC_SHA1(s,'Server Key'),u));
   if t<>m4 then
