@@ -16,19 +16,18 @@ interface
 
 uses mongoWire;
 
-procedure MongoWireAuthenticate(MongoWire:TMongoWire;
-  const UserName,Password:WideString);
-procedure MongoWireLogout(MongoWire:TMongoWire);
+procedure MongoWireAuthenticate(MongoWire: TMongoWire;
+  const UserName, Password: WideString);
+procedure MongoWireLogout(MongoWire: TMongoWire);
 
 type
   EMongoAuthenticationFailed=class(EMongoException);
 
 implementation
 
-uses SysUtils, bsonDoc, Variants,
-  bsonUtils;
+uses SysUtils, bsonDoc, Variants;
 
-function MD5Hash(x:UTF8String):UTF8String;
+function MD5Hash(x: UTF8String): UTF8String;
 const
   roll1:array[0..3] of cardinal=(7,12,17,22);
   roll2:array[0..3] of cardinal=(5,9,14,20);
@@ -143,12 +142,26 @@ begin
     Result[j+1]:=AnsiChar(h[j shr 2] shr ((j and 3)*8));
 end;
 
-function SwapEndian(Value: integer): integer; register; overload;
+{
+function SwapEndian32(Value: cardinal): cardinal; register; overload;
 asm
   bswap eax
 end;
+}
 
-function SHA1Hash(x:UTF8String):UTF8String;
+function SwapEndian32(Value: cardinal): cardinal;
+var
+  x:array[0..3] of byte absolute Result;
+  y:array[0..3] of byte absolute Value;
+begin
+  x[0]:=y[3];
+  x[1]:=y[2];
+  x[2]:=y[1];
+  x[3]:=y[0];
+end;
+
+
+function SHA1Hash(x: UTF8String): UTF8String;
 const
   hex:array[0..15] of AnsiChar='0123456789abcdef';
 var
@@ -174,7 +187,7 @@ begin
     x[j]:=#0;
    end;
   Move(x[1],d[0],i);
-  d[dl-1]:=SwapEndian(a shl 3);
+  d[dl-1]:=SwapEndian32(a shl 3);
   h[0]:=$67452301;
   h[1]:=$efcdab89;
   h[2]:=$98badcfe;
@@ -186,7 +199,7 @@ begin
     j:=0;
     while j<16 do
      begin
-      e[j]:=SwapEndian(d[i]);
+      e[j]:=SwapEndian32(d[i]);
       inc(i);
       inc(j);
      end;
@@ -280,7 +293,8 @@ begin
   Result:=SHA1Hash(h1+SHA1Hash(h2+Msg));
 end;
 
-function PBKDF2_HMAC_SHA1(const Password,Salt:UTF8String;Iterations,KeyLength:cardinal):UTF8String;
+function PBKDF2_HMAC_SHA1(const Password, Salt: UTF8String;
+  Iterations, KeyLength: cardinal): UTF8String;
 var
   i,j,k,c,l:cardinal;
   x,y:UTF8String;
@@ -320,7 +334,7 @@ end;
 const
   HexCodes:array[0..15] of AnsiChar='0123456789abcdef';
 
-function HexEncode(const x:UTF8String):UTF8string;
+function HexEncode(const x: UTF8String): UTF8string;
 var
   i,l:integer;
 begin
@@ -339,7 +353,7 @@ const
   Base64Codes:array[0..63] of AnsiChar=
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
-function Base64Encode(const x:UTF8String):UTF8String;
+function Base64Encode(const x: UTF8String): UTF8String;
 var
   i,j,l:cardinal;
 begin
@@ -376,7 +390,7 @@ begin
    end;
 end;
 
-function Base64Decode(const x:UTF8String):UTF8String;
+function Base64Decode(const x: UTF8String): UTF8String;
 var
   i,j,k,l,m:cardinal;
   n:array[0..3] of byte;
@@ -411,7 +425,7 @@ begin
    end;
 end;
 
-function BuildNonce:UTF8String;
+function BuildNonce: UTF8String;
 var
   x:packed record g1,g2:TGUID; end;
 begin
@@ -421,8 +435,8 @@ begin
   Move(x,Result[1],24);
 end;
 
-procedure MongoWireAuthenticate(MongoWire:TMongoWire;
-  const UserName,Password:WideString);
+procedure MongoWireAuthenticate(MongoWire: TMongoWire;
+  const UserName, Password: WideString);
 var
   nonce,m1,m2,m3,m4,r,s,t,u:Utf8String;
   v:OleVariant;
@@ -573,7 +587,7 @@ begin
    end;
 end;
 
-procedure MongoWireLogout(MongoWire:TMongoWire);
+procedure MongoWireLogout(MongoWire: TMongoWire);
 begin
   if MongoWire.Get('admin.$cmd',BSON(['logout',1]))['ok']<>1 then
     raise EMongoException.Create('MongoWire: logout failed');
