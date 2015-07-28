@@ -27,7 +27,12 @@ implementation
 
 uses SysUtils, bsonDoc, Variants;
 
-function MD5Hash(x: UTF8String): UTF8String;
+{$IF not Declared(RawByteString)}
+type
+  RawByteString=AnsiString;
+{$IFEND}
+
+function MD5Hash(x: RawByteString): RawByteString;
 const
   roll1:array[0..3] of cardinal=(7,12,17,22);
   roll2:array[0..3] of cardinal=(5,9,14,20);
@@ -161,7 +166,7 @@ begin
 end;
 
 
-function SHA1Hash(x: UTF8String): UTF8String;
+function SHA1Hash(x: RawByteString): RawByteString;
 const
   hex:array[0..15] of AnsiChar='0123456789abcdef';
 var
@@ -266,7 +271,7 @@ begin
     Result[j+1]:=AnsiChar(h[j shr 2] shr ((3-(j and 3))*8));
 end;
 
-function HMAC_SHA1(const Key, Msg: UTF8String): UTF8String;
+function HMAC_SHA1(const Key, Msg: RawByteString): RawByteString;
 const
   BlockSize=64;//SHA1
 var
@@ -293,8 +298,8 @@ begin
   Result:=SHA1Hash(h1+SHA1Hash(h2+Msg));
 end;
 
-function PBKDF2_HMAC_SHA1(const Password, Salt: UTF8String;
-  Iterations, KeyLength: cardinal): UTF8String;
+function PBKDF2_HMAC_SHA1(const Password, Salt: RawByteString;
+  Iterations, KeyLength: cardinal): RawByteString;
 var
   i,j,k,c,l:cardinal;
   x,y:UTF8String;
@@ -334,7 +339,7 @@ end;
 const
   HexCodes:array[0..15] of AnsiChar='0123456789abcdef';
 
-function HexEncode(const x: UTF8String): UTF8string;
+function HexEncode(const x: RawByteString): UTF8string;
 var
   i,l:integer;
 begin
@@ -353,7 +358,7 @@ const
   Base64Codes:array[0..63] of AnsiChar=
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
-function Base64Encode(const x: UTF8String): UTF8String;
+function Base64Encode(const x: RawByteString): UTF8String;
 var
   i,j,l:cardinal;
 begin
@@ -390,7 +395,7 @@ begin
    end;
 end;
 
-function Base64Decode(const x: UTF8String): UTF8String;
+function Base64Decode(const x: UTF8String): RawByteString;
 var
   i,j,k,l,m:cardinal;
   n:array[0..3] of byte;
@@ -425,7 +430,7 @@ begin
    end;
 end;
 
-function BuildNonce: UTF8String;
+function BuildNonce: RawByteString;
 var
   x:packed record g1,g2:TGUID; end;
 begin
