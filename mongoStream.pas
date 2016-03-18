@@ -2,7 +2,7 @@
 
 TMongoWire: mongoStream.pas
 
-Copyright 2010-2014 Stijn Sanders
+Copyright 2010-2016 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
@@ -245,7 +245,7 @@ begin
     //assert l=chunkSize
     if l<>0 then
      begin
-      if l<>chunkSize then VarArrayRedim(v,l);//assert last read from stream!
+      if l<>chunkSize then VarArrayRedim(v,l-1);//assert last read from stream!
       db.Insert(prefix+mongoStreamChunksSuffix,BSON([
         mongoStreamFilesIDField,Result,
         mongoStreamNField,i,

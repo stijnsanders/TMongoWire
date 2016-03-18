@@ -119,8 +119,6 @@ function closesocket(s: THandle): integer; stdcall;
 
 implementation
 
-//uses Math;
-
 var
   WSAData:record // !!! also WSDATA
     wVersion:word;
