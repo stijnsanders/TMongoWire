@@ -62,9 +62,13 @@ var
   dl,i,j,k,l:integer;
   d:array of cardinal;
   g,h:array[0..3] of cardinal;
+{$IF not Declared(RawByteString)}
+type
+  RawByteString=AnsiString;
+{$IFEND}
 begin
   //based on http://www.ietf.org/rfc/rfc1321.txt
-  a:=Length(x);
+  a:=Length(RawByteString(x));
   dl:=a+9;
   if (dl and $3F)<>0 then dl:=(dl and $FFC0)+$40;
   i:=dl;
