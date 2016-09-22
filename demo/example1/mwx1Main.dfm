@@ -1,8 +1,8 @@
 object MainForm: TMainForm
   Left = 192
-  Top = 110
-  Width = 386
-  Height = 364
+  Top = 112
+  Width = 369
+  Height = 360
   Caption = 'TMongoWire Example 1'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -15,13 +15,13 @@ object MainForm: TMainForm
   OnDestroy = FormDestroy
   OnShow = FormShow
   DesignSize = (
-    370
-    326)
+    353
+    321)
   PixelsPerInch = 96
   TextHeight = 13
   object lblCount: TLabel
     Left = 8
-    Top = 280
+    Top = 272
     Width = 12
     Height = 13
     Anchors = [akLeft, akBottom]
@@ -29,7 +29,7 @@ object MainForm: TMainForm
   end
   object btnNew: TButton
     Left = 8
-    Top = 296
+    Top = 288
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]
@@ -39,7 +39,7 @@ object MainForm: TMainForm
   end
   object btnEdit: TButton
     Left = 96
-    Top = 296
+    Top = 288
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]
@@ -49,7 +49,7 @@ object MainForm: TMainForm
   end
   object btnDelete: TButton
     Left = 184
-    Top = 296
+    Top = 288
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]
@@ -60,8 +60,8 @@ object MainForm: TMainForm
   object ListView1: TListView
     Left = 8
     Top = 8
-    Width = 361
-    Height = 265
+    Width = 337
+    Height = 261
     Anchors = [akLeft, akTop, akRight, akBottom]
     Columns = <
       item
@@ -84,16 +84,17 @@ object MainForm: TMainForm
       end>
     ReadOnly = True
     RowSelect = True
-    TabOrder = 3
+    TabOrder = 4
     ViewStyle = vsReport
   end
   object btnRefresh: TButton
     Left = 272
-    Top = 296
+    Top = 288
     Width = 75
     Height = 25
+    Anchors = [akLeft, akBottom]
     Caption = 'Refresh'
-    TabOrder = 4
+    TabOrder = 3
     OnClick = btnRefreshClick
   end
 end

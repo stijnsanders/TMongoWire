@@ -2,7 +2,7 @@
 
 TMongoWire: bsonDoc.pas
 
-Copyright 2010-2015 Stijn Sanders
+Copyright 2010-2016 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
@@ -318,7 +318,7 @@ var //outside of stmReadCString to recycle memory
     s:AnsiString;
   begin
     stmRead(@l,4);
-    if l<1 then s:='' else
+    if l<2 then s:='' else
      begin
       SetLength(s,l-1);
       stmRead(@s[1],l-1);
