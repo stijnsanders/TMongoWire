@@ -1249,13 +1249,15 @@ end;
 
 function TBSONDocumentEnumerator.Next(const doc: IBSONDocument): boolean;
 var
-  p:int64;
+  p,q:int64;
 begin
   //TODO: detect dirty (deep!), then update into stream??
   if (FPosCurrent<0) or (FPosCurrent>=FPosIndex) then Result:=false else
    begin
-    OleCheck(FData.Seek(FPos[FPosCurrent],soFromBeginning,p));
+    OleCheck(FData.Seek(0,soFromCurrent,q));//keep
+    OleCheck(FData.Seek(FPos[FPosCurrent],soFromBeginning,p));//set
     (doc as IPersistStream).Load(FData);
+    OleCheck(FData.Seek(q,soFromBeginning,p));//restore
     inc(FPosCurrent);
     Result:=true;
    end;
