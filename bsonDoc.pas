@@ -337,7 +337,7 @@ var //outside of stmReadCString to recycle memory
     s:string;
   begin
     Result:=CoRegExp.Create;
-    REsult.Pattern:=stmReadCString;
+    Result.Pattern:=stmReadCString;
     s:=stmReadCString;
     for i:=1 to Length(s)-1 do
       case s[i] of
@@ -402,13 +402,10 @@ var //outside of stmReadCString to recycle memory
         inc(ltotal,l);
         l:=0;
         stmRead(@l,1);
-        if l=0 then n:='' else
-         begin
+        if l=0 then n:='' else //done
           if l<>bsonEmbeddedDocument then
             raise EBSONException.Create('Can''t mix documents and non-documents with IBSONDocumentEnumerator');
-          n:=stmReadCString;
-          //assert n=IntToStr(e.Count);
-         end;
+        n:=stmReadCString; //assert n=IntToStr(e.Count)
       until n='';
       Result:=true;
      end
@@ -922,13 +919,12 @@ begin
         case vt and varTypeMask of
           //varEmpty?
           varNull:
-           begin
-            {
-            i:=bsonNULL;
-            stmWrite(@i,1);
-            stmWriteCString(key);
-            }
-           end;
+            if vindex<>-1 then//?
+             begin
+              i:=bsonNULL;
+              stmWrite(@i,1);
+              stmWriteCString(key);
+             end;
           varSmallint,varInteger,varShortInt,varByte,varWord,varLongWord:
            begin
             i:=bsonInt32;
@@ -1249,7 +1245,11 @@ end;
 
 function TBSONDocumentEnumerator.Next(const doc: IBSONDocument): boolean;
 var
+  {$IFDEF VER310}
+  p,q:UInt64;
+  {$ELSE}
   p,q:int64;
+  {$ENDIF}
 begin
   //TODO: detect dirty (deep!), then update into stream??
   if (FPosCurrent<0) or (FPosCurrent>=FPosIndex) then Result:=false else
