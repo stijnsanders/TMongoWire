@@ -2,7 +2,7 @@
 
 TMongoWire: mongoWire.pas
 
-Copyright 2010-2015 Stijn Sanders
+Copyright 2010-2016 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
@@ -418,7 +418,8 @@ procedure TMongoWire.Update(const Collection: WideString; const Selector,
 var
   d:IBSONDocument;
 begin
-  if Doc=nil then raise EMongoException.Create('MongoWire.Update: Doc required');
+  if Doc=nil then
+    raise EMongoException.Create('MongoWire.Update: Doc required');
   d:=BSON(
     ['q',Selector
     ,'u',Doc
@@ -435,7 +436,8 @@ end;
 procedure TMongoWire.Insert(const Collection: WideString;
   const Doc: IBSONDocument);
 begin
-  if Doc=nil then raise EMongoException.Create('MongoWire.Insert: Doc required');
+  if Doc=nil then
+    raise EMongoException.Create('MongoWire.Insert: Doc required');
   RunCommand(BSON(
     ['insert',Collection
     ,'documents',VarArrayOf([Doc])
@@ -669,7 +671,8 @@ function TMongoWireQuery.Next(const Doc: IBSONDocument): boolean;
 var
   i:integer;
 begin
-  if Doc=nil then EMongoException.Create('MongoWireQuery.Next: Doc required');
+  if Doc=nil then
+    raise EMongoException.Create('MongoWireQuery.Next: Doc required');
   if FPageIndex=FNumberReturned then
    begin
     if FCursorID=0 then

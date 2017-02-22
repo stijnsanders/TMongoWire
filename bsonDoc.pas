@@ -2,7 +2,7 @@
 
 TMongoWire: bsonDoc.pas
 
-Copyright 2010-2015 Stijn Sanders
+Copyright 2010-2016 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
@@ -318,7 +318,7 @@ var //outside of stmReadCString to recycle memory
     s:AnsiString;
   begin
     stmRead(@l,4);
-    if l<1 then s:='' else
+    if l<2 then s:='' else
      begin
       SetLength(s,l-1);
       stmRead(@s[1],l-1);
@@ -337,7 +337,7 @@ var //outside of stmReadCString to recycle memory
     s:string;
   begin
     Result:=CoRegExp.Create;
-    REsult.Pattern:=stmReadCString;
+    Result.Pattern:=stmReadCString;
     s:=stmReadCString;
     for i:=1 to Length(s)-1 do
       case s[i] of
@@ -402,13 +402,10 @@ var //outside of stmReadCString to recycle memory
         inc(ltotal,l);
         l:=0;
         stmRead(@l,1);
-        if l=0 then n:='' else
-         begin
+        if l=0 then n:='' else //done
           if l<>bsonEmbeddedDocument then
             raise EBSONException.Create('Can''t mix documents and non-documents with IBSONDocumentEnumerator');
-          n:=stmReadCString;
-          //assert n=IntToStr(e.Count);
-         end;
+        n:=stmReadCString; //assert n=IntToStr(e.Count)
       until n='';
       Result:=true;
      end
@@ -922,13 +919,12 @@ begin
         case vt and varTypeMask of
           //varEmpty?
           varNull:
-           begin
-            {
-            i:=bsonNULL;
-            stmWrite(@i,1);
-            stmWriteCString(key);
-            }
-           end;
+            if vindex<>-1 then//?
+             begin
+              i:=bsonNULL;
+              stmWrite(@i,1);
+              stmWriteCString(key);
+             end;
           varSmallint,varInteger,varShortInt,varByte,varWord,varLongWord:
            begin
             i:=bsonInt32;
@@ -1249,13 +1245,19 @@ end;
 
 function TBSONDocumentEnumerator.Next(const doc: IBSONDocument): boolean;
 var
-  p:int64;
+  {$IFDEF VER310}
+  p,q:UInt64;
+  {$ELSE}
+  p,q:int64;
+  {$ENDIF}
 begin
   //TODO: detect dirty (deep!), then update into stream??
   if (FPosCurrent<0) or (FPosCurrent>=FPosIndex) then Result:=false else
    begin
-    OleCheck(FData.Seek(FPos[FPosCurrent],soFromBeginning,p));
+    OleCheck(FData.Seek(0,soFromCurrent,q));//keep
+    OleCheck(FData.Seek(FPos[FPosCurrent],soFromBeginning,p));//set
     (doc as IPersistStream).Load(FData);
+    OleCheck(FData.Seek(q,soFromBeginning,p));//restore
     inc(FPosCurrent);
     Result:=true;
    end;

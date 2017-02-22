@@ -2,9 +2,15 @@
 
 TMongoWire: mongoAuth.pas
 
-Copyright 2010-2014 Stijn Sanders
+Copyright 2010-2016 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
+
+### ATTENTION ###
+  This unit declares MongoWireAuthenticate for use
+  with MongoDB instances up to version 2.6
+  The authentication method changed with MondoDB 3.0,
+  use unit mongoAuth3.pas with newer versions.
 
 }
 unit mongoAuth;

@@ -9,6 +9,9 @@ https://github.com/stijnsanders/TMongoWire
 }
 unit mongoID;
 
+{$D-}
+{$L-}
+
 interface
 
 function mongoObjectId:string;
