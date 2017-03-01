@@ -9,8 +9,6 @@ https://github.com/stijnsanders/TMongoWire
 }
 unit mongoAuth3;
 
-{$D-}
-{$L-}
 
 interface
 
