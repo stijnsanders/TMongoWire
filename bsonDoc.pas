@@ -354,7 +354,11 @@ var //outside of stmReadCString to recycle memory
   {$ENDIF}
   function stmReadBSONDocument(ReuseDoc:boolean; var vv:OleVariant): boolean;
   var
+    {$IFDEF VER310}
+    p1,p2:UInt64;
+    {$ELSE}
     p1,p2:int64;
+    {$ENDIF}
     d:TBSONDocument;
     dd:IBSONDocument;
   begin
@@ -384,7 +388,11 @@ var //outside of stmReadCString to recycle memory
   function stmReadBSONDocArray(const v:OleVariant): boolean;
   var
     e:IBSONDocumentEnumerator;
+    {$IFDEF VER310}
+    p:UInt64;
+    {$ELSE}
     p:int64;
+    {$ENDIF}
     l:integer;
     n:WideString;
   begin
@@ -657,7 +665,11 @@ end;
 function TBSONDocument.Save(const stm: IStream;
   fClearDirty: BOOL): HResult;
 var
+  {$IFDEF VER310}
+  lstart,lx:UInt64;
+  {$ELSE}
   lstart,lx:Int64;
+  {$ENDIF}
   ltotal,li,xi:integer;
   procedure stmWrite(p:pointer;s:integer);
   var
@@ -704,7 +716,11 @@ var
   function TryWriteBSONDocument:boolean;
   var
     i:integer;
+    {$IFDEF VER310}
+    ii,jj:UInt64;
+    {$ELSE}
     ii,jj:int64;
+    {$ENDIF}
     di:IBSONDocument;
   begin
     Result:=uu.QueryInterface(IID_IBSONDocument,di)=S_OK;
@@ -759,7 +775,11 @@ var
     IID_IStream:TGUID='{0000000C-0000-0000-C000-000000000046}';
   var
     i,j:integer;
+    {$IFDEF VER310}
+    ii,jj:UInt64;
+    {$ELSE}
     ii,jj:int64;
+    {$ENDIF}
     ss:IStream;
     d:array[0..dSize-1] of byte;
   begin
@@ -793,7 +813,11 @@ var
     IID_IPersistStream:TGUID='{00000109-0000-0000-C000-000000000046}';
   var
     i,j:integer;
+    {$IFDEF VER310}
+    ii,jj:UInt64;
+    {$ELSE}
     ii,jj:int64;
+    {$ENDIF}
     ps:IPersistStream;
   begin
     Result:=uu.QueryInterface(IID_IPersistStream,ps)=S_OK;
