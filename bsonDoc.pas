@@ -2,7 +2,7 @@
 
 TMongoWire: bsonDoc.pas
 
-Copyright 2010-2016 Stijn Sanders
+Copyright 2010-2017 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
@@ -168,6 +168,20 @@ const
   BSONArrayBaseIndex=0;//1?
   BSONDetectVarArrayType=true;
 
+{$IF not Declared(UTF8ToWideString)}
+function UTF8ToWideString(const s: UTF8String): WideString;
+begin
+  Result:=UTF8Decode(s);
+end;
+{$IFEND}
+
+{$IF not Declared(Uint64)}
+type
+  UInt64=int64;
+{$IFEND}
+
+{ TBSONDocument }
+
 procedure TBSONDocument.AfterConstruction;
 begin
   inherited;
@@ -310,7 +324,7 @@ var //outside of stmReadCString to recycle memory
       ss[sx]:=c;
       stmRead(@c,1);
      end;
-    Result:=UTF8Decode(Copy(ss,1,sx));
+    Result:=UTF8ToWideString(Copy(ss,1,sx));
   end;
   function stmReadString: WideString;
   var
@@ -328,7 +342,7 @@ var //outside of stmReadCString to recycle memory
     stmRead(@l,1);
     if l<>0 then
       raise EBSONException.Create('BSON string incorrectly terminated at offset '+IntToHex(lstart,8));
-    Result:=UTF8Decode(s);
+    Result:=UTF8ToWideString(s);
   end;
   {$IFDEF BSON_SUPPORT_REGEX}
   function stmReadRegEx: IRegExp2;
@@ -354,7 +368,7 @@ var //outside of stmReadCString to recycle memory
   {$ENDIF}
   function stmReadBSONDocument(ReuseDoc:boolean; var vv:OleVariant): boolean;
   var
-    p1,p2:int64;
+    p1,p2:Uint64;
     d:TBSONDocument;
     dd:IBSONDocument;
   begin
@@ -384,7 +398,7 @@ var //outside of stmReadCString to recycle memory
   function stmReadBSONDocArray(const v:OleVariant): boolean;
   var
     e:IBSONDocumentEnumerator;
-    p:int64;
+    p:Uint64;
     l:integer;
     n:WideString;
   begin
@@ -657,7 +671,7 @@ end;
 function TBSONDocument.Save(const stm: IStream;
   fClearDirty: BOOL): HResult;
 var
-  lstart,lx:Int64;
+  lstart,lx:Uint64;
   ltotal,li,xi:integer;
   procedure stmWrite(p:pointer;s:integer);
   var
@@ -704,7 +718,7 @@ var
   function TryWriteBSONDocument:boolean;
   var
     i:integer;
-    ii,jj:int64;
+    ii,jj:Uint64;
     di:IBSONDocument;
   begin
     Result:=uu.QueryInterface(IID_IBSONDocument,di)=S_OK;
@@ -759,7 +773,7 @@ var
     IID_IStream:TGUID='{0000000C-0000-0000-C000-000000000046}';
   var
     i,j:integer;
-    ii,jj:int64;
+    ii,jj:Uint64;
     ss:IStream;
     d:array[0..dSize-1] of byte;
   begin
@@ -793,7 +807,7 @@ var
     IID_IPersistStream:TGUID='{00000109-0000-0000-C000-000000000046}';
   var
     i,j:integer;
-    ii,jj:int64;
+    ii,jj:Uint64;
     ps:IPersistStream;
   begin
     Result:=uu.QueryInterface(IID_IPersistStream,ps)=S_OK;
@@ -1143,6 +1157,8 @@ begin
      end;
 end;
 
+{ BSON }
+
 function BSON:IBSONDocument; //overload;
 begin
   Result:=TBSONDocument.Create as IBSONDocument;
@@ -1245,11 +1261,7 @@ end;
 
 function TBSONDocumentEnumerator.Next(const doc: IBSONDocument): boolean;
 var
-  {$IFDEF VER310}
   p,q:UInt64;
-  {$ELSE}
-  p,q:int64;
-  {$ENDIF}
 begin
   //TODO: detect dirty (deep!), then update into stream??
   if (FPosCurrent<0) or (FPosCurrent>=FPosIndex) then Result:=false else
@@ -1274,6 +1286,8 @@ begin
     raise EBSONException.Create('IBSONDocumentEnumerator.Skip can''t skip past count');
   inc(FPosCurrent,n);
 end;
+
+{ BSONEnum }
 
 function BSONEnum:IBSONDocumentEnumerator;
 begin
