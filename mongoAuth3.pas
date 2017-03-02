@@ -2,7 +2,7 @@
 
 TMongoWire: mongoAuth3.pas
 
-Copyright 2015 Stijn Sanders
+Copyright 2015-2016 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 

@@ -175,11 +175,6 @@ begin
 end;
 {$IFEND}
 
-{$IF not Declared(Uint64)}
-type
-  UInt64=int64;
-{$IFEND}
-
 { TBSONDocument }
 
 procedure TBSONDocument.AfterConstruction;
@@ -368,7 +363,7 @@ var //outside of stmReadCString to recycle memory
   {$ENDIF}
   function stmReadBSONDocument(ReuseDoc:boolean; var vv:OleVariant): boolean;
   var
-    p1,p2:Uint64;
+    p1,p2:LargeInt;
     d:TBSONDocument;
     dd:IBSONDocument;
   begin
@@ -398,7 +393,7 @@ var //outside of stmReadCString to recycle memory
   function stmReadBSONDocArray(const v:OleVariant): boolean;
   var
     e:IBSONDocumentEnumerator;
-    p:Uint64;
+    p:LargeInt;
     l:integer;
     n:WideString;
   begin
@@ -671,7 +666,7 @@ end;
 function TBSONDocument.Save(const stm: IStream;
   fClearDirty: BOOL): HResult;
 var
-  lstart,lx:Uint64;
+  lstart,lx:LargeInt;
   ltotal,li,xi:integer;
   procedure stmWrite(p:pointer;s:integer);
   var
@@ -718,7 +713,7 @@ var
   function TryWriteBSONDocument:boolean;
   var
     i:integer;
-    ii,jj:Uint64;
+    ii,jj:LargeInt;
     di:IBSONDocument;
   begin
     Result:=uu.QueryInterface(IID_IBSONDocument,di)=S_OK;
@@ -773,7 +768,7 @@ var
     IID_IStream:TGUID='{0000000C-0000-0000-C000-000000000046}';
   var
     i,j:integer;
-    ii,jj:Uint64;
+    ii,jj:LargeInt;
     ss:IStream;
     d:array[0..dSize-1] of byte;
   begin
@@ -807,7 +802,7 @@ var
     IID_IPersistStream:TGUID='{00000109-0000-0000-C000-000000000046}';
   var
     i,j:integer;
-    ii,jj:Uint64;
+    ii,jj:LargeInt;
     ps:IPersistStream;
   begin
     Result:=uu.QueryInterface(IID_IPersistStream,ps)=S_OK;
@@ -1261,7 +1256,7 @@ end;
 
 function TBSONDocumentEnumerator.Next(const doc: IBSONDocument): boolean;
 var
-  p,q:UInt64;
+  p,q:LargeInt;
 begin
   //TODO: detect dirty (deep!), then update into stream??
   if (FPosCurrent<0) or (FPosCurrent>=FPosIndex) then Result:=false else
