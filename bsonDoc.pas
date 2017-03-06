@@ -92,7 +92,7 @@ type
     procedure Set_Item(const Key: WideString; Value: OleVariant); safecall;
     function GetClassID(out classID: TCLSID): HResult; stdcall;
     function IsDirty: HResult; stdcall;
-    function GetSizeMax(out cbSize: Largeint): HResult; stdcall;
+    function GetSizeMax(out cbSize: LargeUInt): HResult; stdcall;
   public
     procedure AfterConstruction; override;
     destructor Destroy; override;
@@ -197,7 +197,7 @@ begin
   inherited;
 end;
 
-function TBSONDocument.GetSizeMax(out cbSize: Largeint): HResult;
+function TBSONDocument.GetSizeMax(out cbSize: LargeUInt): HResult;
 begin
   //TODO: calculate total size
   raise EInvalidOperation.Create('Not implemented');
@@ -363,7 +363,7 @@ var //outside of stmReadCString to recycle memory
   {$ENDIF}
   function stmReadBSONDocument(ReuseDoc:boolean; var vv:OleVariant): boolean;
   var
-    p1,p2:LargeInt;
+    p1,p2:LargeUInt;
     d:TBSONDocument;
     dd:IBSONDocument;
   begin
@@ -393,7 +393,7 @@ var //outside of stmReadCString to recycle memory
   function stmReadBSONDocArray(const v:OleVariant): boolean;
   var
     e:IBSONDocumentEnumerator;
-    p:LargeInt;
+    p:LargeUInt;
     l:integer;
     n:WideString;
   begin
@@ -666,7 +666,7 @@ end;
 function TBSONDocument.Save(const stm: IStream;
   fClearDirty: BOOL): HResult;
 var
-  lstart,lx:LargeInt;
+  lstart,lx:LargeUInt;
   ltotal,li,xi:integer;
   procedure stmWrite(p:pointer;s:integer);
   var
@@ -713,7 +713,7 @@ var
   function TryWriteBSONDocument:boolean;
   var
     i:integer;
-    ii,jj:LargeInt;
+    ii,jj:LargeUInt;
     di:IBSONDocument;
   begin
     Result:=uu.QueryInterface(IID_IBSONDocument,di)=S_OK;
@@ -768,7 +768,7 @@ var
     IID_IStream:TGUID='{0000000C-0000-0000-C000-000000000046}';
   var
     i,j:integer;
-    ii,jj:LargeInt;
+    ii,jj:LargeUInt;
     ss:IStream;
     d:array[0..dSize-1] of byte;
   begin
@@ -802,7 +802,7 @@ var
     IID_IPersistStream:TGUID='{00000109-0000-0000-C000-000000000046}';
   var
     i,j:integer;
-    ii,jj:LargeInt;
+    ii,jj:LargeUInt;
     ps:IPersistStream;
   begin
     Result:=uu.QueryInterface(IID_IPersistStream,ps)=S_OK;
@@ -1256,7 +1256,7 @@ end;
 
 function TBSONDocumentEnumerator.Next(const doc: IBSONDocument): boolean;
 var
-  p,q:LargeInt;
+  p,q:LargeUInt;
 begin
   //TODO: detect dirty (deep!), then update into stream??
   if (FPosCurrent<0) or (FPosCurrent>=FPosIndex) then Result:=false else
