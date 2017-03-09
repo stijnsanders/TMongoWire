@@ -64,12 +64,6 @@ const
   IID_IBSONDocumentEnumerator
     : TGUID = '{42534F4E-0000-0003-C000-000000000003}';
 
-{$IFDEF VER310}
-type UInt64x=UInt64;
-{$ELSE}
-type UInt64x=LargeUInt;
-{$ENDIF}
-    
 type
   IBSONDocument = interface(IUnknown)
     ['{42534F4E-0000-0001-C000-000000000001}']
@@ -81,6 +75,8 @@ type
   end;
 
   //TODO: ActiveX enumerator over elements
+  
+  UInt64x={$IFDEF VER310}LargeInt;{$ELSE}LargeUInt;{$ENDIF}
 
   //BSON document as interfaced object allows storage in a variant variable
   TBSONDocument = class(TInterfacedObject, IBSONDocument, IPersistStream)
