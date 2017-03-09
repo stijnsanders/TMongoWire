@@ -1,0 +1,3 @@
+v1.0.1
+- fixed int64 issue over Delphi versions
+v1.0.0

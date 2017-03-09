@@ -6,6 +6,8 @@ Copyright 2010-2017 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
+v1.0.1
+
 }
 unit bsonDoc;
 
@@ -62,6 +64,12 @@ const
   IID_IBSONDocumentEnumerator
     : TGUID = '{42534F4E-0000-0003-C000-000000000003}';
 
+{$IFDEF VER310}
+type UInt64x=UInt64;
+{$ELSE}
+type UInt64x=LargeUInt;
+{$ENDIF}
+    
 type
   IBSONDocument = interface(IUnknown)
     ['{42534F4E-0000-0001-C000-000000000001}']
@@ -92,7 +100,7 @@ type
     procedure Set_Item(const Key: WideString; Value: OleVariant); safecall;
     function GetClassID(out classID: TCLSID): HResult; stdcall;
     function IsDirty: HResult; stdcall;
-    function GetSizeMax(out cbSize: LargeUInt): HResult; stdcall;
+    function GetSizeMax(out cbSize: UInt64x): HResult; stdcall;
   public
     procedure AfterConstruction; override;
     destructor Destroy; override;
@@ -197,7 +205,7 @@ begin
   inherited;
 end;
 
-function TBSONDocument.GetSizeMax(out cbSize: LargeUInt): HResult;
+function TBSONDocument.GetSizeMax(out cbSize: UInt64x): HResult;
 begin
   //TODO: calculate total size
   raise EInvalidOperation.Create('Not implemented');
@@ -363,7 +371,7 @@ var //outside of stmReadCString to recycle memory
   {$ENDIF}
   function stmReadBSONDocument(ReuseDoc:boolean; var vv:OleVariant): boolean;
   var
-    p1,p2:LargeUInt;
+    p1,p2:UInt64x;
     d:TBSONDocument;
     dd:IBSONDocument;
   begin
@@ -393,7 +401,7 @@ var //outside of stmReadCString to recycle memory
   function stmReadBSONDocArray(const v:OleVariant): boolean;
   var
     e:IBSONDocumentEnumerator;
-    p:LargeUInt;
+    p:UInt64x;
     l:integer;
     n:WideString;
   begin
@@ -632,7 +640,7 @@ begin
         if vindex=-1 then
           Set_Item(k,v) //add the element
         else if vindex=-2 then
-          vindex:=-1 //see stmReadBSONDocument,stmReadBSONDocument above
+          vindex:=-1 //see stmReadBSONDocument,stmReadBSONDocArray above
         else
           if vstack[vindex].vi=-1 then
             vstack[vindex].vi:=0 //just starting
@@ -666,7 +674,7 @@ end;
 function TBSONDocument.Save(const stm: IStream;
   fClearDirty: BOOL): HResult;
 var
-  lstart,lx:LargeUInt;
+  lstart,lx:UInt64x;
   ltotal,li,xi:integer;
   procedure stmWrite(p:pointer;s:integer);
   var
@@ -713,7 +721,7 @@ var
   function TryWriteBSONDocument:boolean;
   var
     i:integer;
-    ii,jj:LargeUInt;
+    ii,jj:UInt64x;
     di:IBSONDocument;
   begin
     Result:=uu.QueryInterface(IID_IBSONDocument,di)=S_OK;
@@ -768,7 +776,7 @@ var
     IID_IStream:TGUID='{0000000C-0000-0000-C000-000000000046}';
   var
     i,j:integer;
-    ii,jj:LargeUInt;
+    ii,jj:UInt64x;
     ss:IStream;
     d:array[0..dSize-1] of byte;
   begin
@@ -802,7 +810,7 @@ var
     IID_IPersistStream:TGUID='{00000109-0000-0000-C000-000000000046}';
   var
     i,j:integer;
-    ii,jj:LargeUInt;
+    ii,jj:UInt64x;
     ps:IPersistStream;
   begin
     Result:=uu.QueryInterface(IID_IPersistStream,ps)=S_OK;
@@ -1256,7 +1264,7 @@ end;
 
 function TBSONDocumentEnumerator.Next(const doc: IBSONDocument): boolean;
 var
-  p,q:LargeUInt;
+  p,q:UInt64x;
 begin
   //TODO: detect dirty (deep!), then update into stream??
   if (FPosCurrent<0) or (FPosCurrent>=FPosIndex) then Result:=false else
