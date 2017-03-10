@@ -76,8 +76,6 @@ type
 
   //TODO: ActiveX enumerator over elements
   
-  UInt64x={$IFDEF VER310}LargeInt;{$ELSE}LargeUInt;{$ENDIF}
-
   //BSON document as interfaced object allows storage in a variant variable
   TBSONDocument = class(TInterfacedObject, IBSONDocument, IPersistStream)
   private
@@ -96,7 +94,7 @@ type
     procedure Set_Item(const Key: WideString; Value: OleVariant); safecall;
     function GetClassID(out classID: TCLSID): HResult; stdcall;
     function IsDirty: HResult; stdcall;
-    function GetSizeMax(out cbSize: UInt64x): HResult; stdcall;
+    function GetSizeMax(out cbSize: LargeInt): HResult; stdcall;
   public
     procedure AfterConstruction; override;
     destructor Destroy; override;
@@ -179,6 +177,9 @@ begin
 end;
 {$IFEND}
 
+type
+  UInt64x={$IFDEF VER310}LargeInt{$ELSE}LargeUInt{$ENDIF};
+
 { TBSONDocument }
 
 procedure TBSONDocument.AfterConstruction;
@@ -201,7 +202,7 @@ begin
   inherited;
 end;
 
-function TBSONDocument.GetSizeMax(out cbSize: UInt64x): HResult;
+function TBSONDocument.GetSizeMax(out cbSize: LargeInt): HResult;
 begin
   //TODO: calculate total size
   raise EInvalidOperation.Create('Not implemented');
