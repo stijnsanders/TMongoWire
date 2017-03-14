@@ -178,7 +178,7 @@ end;
 {$IFEND}
 
 type
-  UInt64x={$IFDEF VER310}LargeInt{$ELSE}LargeUInt{$ENDIF};
+  UInt64x={$IFDEF VER310}UInt64{$ELSE}Int64{$ENDIF};
 
 { TBSONDocument }
 
