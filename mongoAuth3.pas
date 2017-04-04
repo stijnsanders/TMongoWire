@@ -25,7 +25,7 @@ type
 
 implementation
 
-uses SysUtils, bsonDoc, Variants;
+uses SysUtils, jsonDoc, Variants;
 
 {$IF not Declared(RawByteString)}
 type
@@ -447,7 +447,7 @@ var
   v:OleVariant;
   i,j,k,l:integer;
   p:PAnsiChar;
-  b:IBSONDocument;
+  b:IJSONDocument;
 const
   ErrMsg='MongoWire: failed to authenticate as "%s"';
 begin
@@ -475,7 +475,7 @@ begin
     VarArrayUnlock(v);
   end;
 
-  b:=MongoWire.Get('$cmd',BSON([
+  b:=MongoWire.Get('$cmd',JSON([
     'saslStart',1,
     'mechanism','SCRAM-SHA-1',//TODO: full-fledged SASL
     'payload',v
@@ -555,7 +555,7 @@ begin
     VarArrayUnlock(v);
   end;
 
-  b:=MongoWire.Get('$cmd',BSON([
+  b:=MongoWire.Get('$cmd',JSON([
     'saslContinue',1,
     'payload',v,
     'conversationId',b['conversationId']
@@ -581,7 +581,7 @@ begin
 
   if b['done']<>true then
    begin
-    b:=MongoWire.Get('$cmd',BSON([
+    b:=MongoWire.Get('$cmd',JSON([
       'saslContinue',1,
       'payload',VarArrayCreate([0,-1],varByte),
       'conversationId',b['conversationId']
@@ -594,7 +594,7 @@ end;
 
 procedure MongoWireLogout(MongoWire: TMongoWire);
 begin
-  if MongoWire.Get('admin.$cmd',BSON(['logout',1]))['ok']<>1 then
+  if MongoWire.Get('admin.$cmd',JSON(['logout',1]))['ok']<>1 then
     raise EMongoException.Create('MongoWire: logout failed');
 end;
 

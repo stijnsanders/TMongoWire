@@ -18,7 +18,7 @@ function mongoObjectId:string;
 
 implementation
 
-uses Windows, SysUtils, bsonDoc, Registry;
+uses Windows, SysUtils, bsonTools, Registry;
 
 var
   mongoObjectID_MachineID,mongoObjectID_Counter:integer;

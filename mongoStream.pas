@@ -2,9 +2,11 @@
 
 TMongoWire: mongoStream.pas
 
-Copyright 2010-2016 Stijn Sanders
+Copyright 2010-2017 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
+
+v1.1.0
 
 }
 unit mongoStream;
@@ -14,21 +16,23 @@ unit mongoStream;
 
 interface
 
-uses Classes, mongoWire, bsonDoc;
+uses Classes, mongoWire, jsonDoc;
 
 type
   TMongoStream = class(TStream)
   private
     Fdb:TMongoWire;
     Fprefix:WideString;
-    Fdata,Fchunk:IBSONDocument;
+    Fdata,Fchunk:IJSONDocument;
     Fsize,FchunkSize,FchunkIndex,FchunkPos:integer;
     procedure InitData;
   public
-    constructor Create(db:TMongoWire;const prefix:WideString;id:OleVariant); overload;
-    constructor Create(db:TMongoWire;const prefix:WideString;filequery:IBSONDocument); overload;
-    class function Add(db:TMongoWire;prefix:WideString;stream:TStream;info:IBSONDocument):OleVariant; overload;
-    class function Add(db:TMongoWire;const prefix,filepath:WideString):OleVariant; overload;
+    constructor Create(db:TMongoWire;const prefix:WideString;const id:Variant); overload;
+    constructor Create(db:TMongoWire;const prefix:WideString;
+      const filequery:IJSONDocument); overload;
+    class function Add(db:TMongoWire;prefix:WideString;stream:TStream;
+      const info:IJSONDocument):Variant; overload;
+    class function Add(db:TMongoWire;const prefix,filepath:WideString):Variant; overload;
     function Read(var Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
     procedure SetSize(NewSize: Longint); override;
@@ -62,18 +66,18 @@ const
 { TMongoStream }
 
 constructor TMongoStream.Create(db: TMongoWire; const prefix: WideString;
-  id: OleVariant);
+  const id: Variant);
 begin
   inherited Create;
   Fdb:=db;//assert Fdb.Connected
   Fprefix:=prefix;
   if Fprefix='' then Fprefix:=mongoStreamDefaultPrefix;
-  Fdata:=Fdb.Get(Fprefix+mongoStreamFilesSuffix,BSON([mongoStreamIDField,id]));
+  Fdata:=Fdb.Get(Fprefix+mongoStreamFilesSuffix,JSON([mongoStreamIDField,id]));
   InitData;
 end;
 
 constructor TMongoStream.Create(db: TMongoWire; const prefix: WideString;
-  filequery: IBSONDocument);
+  const filequery: IJSONDocument);
 begin
   inherited Create;
   Fdb:=db;//assert Fdb.Connected
@@ -85,7 +89,7 @@ end;
 
 procedure TMongoStream.InitData;
 var
-  v:OleVariant;
+  v:Variant;
 begin
   Fsize:=Fdata[mongoStreamLengthField];
   v:=Fdata[mongoStreamChunkSizeField];
@@ -117,11 +121,11 @@ end;
 
 function TMongoStream.Read(var Buffer; Count: Integer): Longint;
 var
-  v:OleVariant;
+  v:Variant;
   p:PAnsiChar;
 begin
   if Fchunk=nil then
-    Fchunk:=Fdb.Get(Fprefix+mongoStreamChunksSuffix,BSON([
+    Fchunk:=Fdb.Get(Fprefix+mongoStreamChunksSuffix,JSON([
       mongoStreamFilesIDField,Fdata[mongoStreamIDField],
       mongoStreamNField,FchunkIndex
     ]));
@@ -161,7 +165,7 @@ end;
 procedure TMongoStream.SaveToStream(Stream: TStream);
 var
   i,s,p:integer;
-  v:OleVariant;
+  v:Variant;
   x:pointer;
 begin
   p:=Fsize;
@@ -169,7 +173,7 @@ begin
    begin
     //TODO: reuse any Fchunk already fetched?
     if p<FchunkSize then s:=p else s:=FchunkSize;
-    v:=Fdb.Get(Fprefix+mongoStreamChunksSuffix,BSON([
+    v:=Fdb.Get(Fprefix+mongoStreamChunksSuffix,JSON([
       mongoStreamFilesIDField,Fdata[mongoStreamIDField],
       mongoStreamNField,i
     ]))[mongoStreamDataField];
@@ -197,10 +201,10 @@ begin
 end;
 
 class function TMongoStream.Add(db: TMongoWire; prefix: WideString;
-  stream: TStream; info: IBSONDocument): OleVariant;
+  stream: TStream; const info: IJSONDocument): Variant;
 var
   i,l,chunkSize:integer;
-  v:OleVariant;
+  v:Variant;
   p:PAnsiChar;
 begin
   if stream.Size>$80000000 then
@@ -246,7 +250,7 @@ begin
     if l<>0 then
      begin
       if l<>chunkSize then VarArrayRedim(v,l-1);//assert last read from stream!
-      db.Insert(prefix+mongoStreamChunksSuffix,BSON([
+      db.Insert(prefix+mongoStreamChunksSuffix,JSON([
         mongoStreamFilesIDField,Result,
         mongoStreamNField,i,
         mongoStreamDataField,v
@@ -257,13 +261,13 @@ begin
 end;
 
 class function TMongoStream.Add(db: TMongoWire; const prefix,
-  filepath: WideString): OleVariant;
+  filepath: WideString): Variant;
 var
   f:TFileStream;
 begin
   f:=TFileStream.Create(filepath,fmOpenRead);
   try
-    Result:=Add(db,prefix,f,BSON([
+    Result:=Add(db,prefix,f,JSON([
       mongoStreamFileNameField,ExtractFileName(filepath)
       //'contentType'?
       //'metadata'?

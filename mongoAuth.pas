@@ -34,7 +34,7 @@ type
 implementation
 
 uses
-  bsonDoc;
+  jsonDoc;
 
 function MD5Hash(x:UTF8String):UTF8String;
 const
@@ -161,8 +161,8 @@ procedure MongoWireAuthenticate(MongoWire:TMongoWire;
 var
   nonce:WideString;
 begin
-  nonce:=MongoWire.Get('$cmd',BSON(['getnonce',1]))['nonce'];
-  if MongoWire.Get('$cmd',BSON([
+  nonce:=MongoWire.Get('$cmd',JSON(['getnonce',1]))['nonce'];
+  if MongoWire.Get('$cmd',JSON([
     'authenticate',1,
     'nonce',nonce,
     'user',UserName,
@@ -175,7 +175,7 @@ end;
 
 procedure MongoWireLogout(MongoWire:TMongoWire);
 begin
-  if MongoWire.Get('$cmd',BSON(['logout',1]))['ok']<>1 then
+  if MongoWire.Get('$cmd',JSON(['logout',1]))['ok']<>1 then
     raise EMongoException.Create('MongoWire: logout failed');
 end;
 

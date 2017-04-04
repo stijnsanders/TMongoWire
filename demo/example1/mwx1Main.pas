@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, mongoWire, ComCtrls, bsonDoc;
+  Dialogs, StdCtrls, mongoWire, ComCtrls, jsonDoc;
 
 type
   TMainForm = class(TForm)
@@ -25,7 +25,7 @@ type
     { Private declarations }
     FMongoWire:TMongoWire;
     procedure LoadItems;
-    procedure LoadItem(li:TListItem;d:IBSONDocument);
+    procedure LoadItem(li:TListItem;const d:IJSONDocument);
     procedure UpdateCount;
   public
     { Public declarations }
@@ -82,12 +82,12 @@ end;
 procedure TMainForm.LoadItems;
 var
   q:TMongoWireQuery;
-  d:IBSONDocument;
+  d:IJSONDocument;
 begin
   ListView1.Items.BeginUpdate;
   try
     ListView1.Items.Clear;
-    d:=BSON;
+    d:=JSON;
     q:=TMongoWireQuery.Create(FMongoWire);
     try
       q.Query(mwx1Collection,nil);
@@ -106,7 +106,7 @@ begin
   lblCount.Caption:=IntToStr(ListView1.Items.Count)+' item(s)';
 end;
 
-procedure TMainForm.LoadItem(li:TListItem;d:IBSONDocument);
+procedure TMainForm.LoadItem(li:TListItem;const d:IJSONDocument);
 begin
   li.Caption:=VarToStr(d['name']);
   li.SubItems.Clear;
@@ -122,14 +122,14 @@ end;
 
 procedure TMainForm.btnNewClick(Sender: TObject);
 var
-  d:IBSONDocument;
+  d:IJSONDocument;
 begin
   ItemForm.txtName.Text:='';
   ItemForm.txtAddress.Text:='';
   ItemForm.txtPhone.Text:='';
   if ItemForm.ShowModal=mrOk then
    begin
-    d:=BSON([
+    d:=JSON([
       'id',mongoObjectID,
       'name',ItemForm.txtName.Text,
       'address',ItemForm.txtAddress.Text,
@@ -144,7 +144,7 @@ end;
 
 procedure TMainForm.btnEditClick(Sender: TObject);
 var
-  dSelector,d:IBSONDocument;
+  dSelector,d:IJSONDocument;
 begin
   if ListView1.Selected=nil then raise Exception.Create('Please select an item to edit');
   {
@@ -152,14 +152,14 @@ begin
   ItemForm.txtAddress.Text:=ListView1.Selected.SubItems[siiAddress];
   ItemForm.txtPhone.Text:=ListView1.Selected.SubItems[siiPhone];
   }
-  dSelector:=BSON(['id',ListView1.Selected.SubItems[siiID]]);
+  dSelector:=JSON(['id',ListView1.Selected.SubItems[siiID]]);
   d:=FMongoWire.Get(mwx1Collection,dSelector);
   ItemForm.txtName.Text:=VarToStr(d['name']);
   ItemForm.txtAddress.Text:=VarToStr(d['address']);
   ItemForm.txtPhone.Text:=VarToStr(d['phone']);
   if ItemForm.ShowModal=mrOk then
    begin
-    d:=BSON([
+    d:=JSON([
       'id',ListView1.Selected.SubItems[siiID],
       'name',ItemForm.txtName.Text,
       'address',ItemForm.txtAddress.Text,
@@ -177,7 +177,7 @@ begin
   if ListView1.Selected=nil then raise Exception.Create('Please select an item to delete');
   if MessageDlg('Are you sure to delete this item?'#13#10'"'+ListView1.Selected.Caption+'"',mtConfirmation,[mbOK,mbCancel],0)=mrOK then
    begin
-    FMongoWire.Delete(mwx1Collection,BSON(['id',ListView1.Selected.SubItems[siiID]]));
+    FMongoWire.Delete(mwx1Collection,JSON(['id',ListView1.Selected.SubItems[siiID]]));
     //LoadItems;?
     ListView1.Selected.Delete;
    end;

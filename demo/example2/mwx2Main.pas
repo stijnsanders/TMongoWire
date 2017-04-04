@@ -29,7 +29,7 @@ var
 implementation
 
 uses
-  bsonDoc, mongoStream, mongoID;
+  jsonDoc, mongoStream, mongoID;
 
 {$R *.dfm}
 
@@ -42,7 +42,7 @@ const
 
 procedure TForm1.FormShow(Sender: TObject);
 var
-  d:IBSONDocument;
+  d:IJSONDocument;
   q:TMongoWireQuery;
   li:TListItem;
 begin
@@ -50,11 +50,11 @@ begin
   FDB.Open;//TODO: from ParamStr? from ini? registry?
 
   q:=TMongoWireQuery.Create(FDB);
-  q.Query(FilesCollection+mongoStreamFilesSuffix,BSON);
+  q.Query(FilesCollection+mongoStreamFilesSuffix,nil);
 
   ListView1.Items.BeginUpdate;
   try
-    d:=BSON;
+    d:=JSON;
     while q.Next(d) do
      begin
       li:=ListView1.Items.Add;
@@ -75,7 +75,7 @@ end;
 
 procedure TForm1.btnAddClick(Sender: TObject);
 var
-  id:OleVariant;
+  id:Variant;
   f:TFileStream;
   fn,contentType:string;
   li:TListItem;
@@ -88,7 +88,7 @@ begin
     f:=TFileStream.Create(fn,fmOpenRead or fmShareDenyWrite);
     try
       fn:=ExtractFileName(fn);
-      id:=TMongoStream.Add(FDB,FilesCollection,f,BSON([
+      id:=TMongoStream.Add(FDB,FilesCollection,f,JSON([
         'name',fn,
         'contentType',contentType,
         'created',VarFromDateTime(Now)
@@ -135,9 +135,9 @@ begin
       'mwx2',MB_OKCANCEL or MB_ICONQUESTION)=idOK then
      begin
       FDB.Delete(FilesCollection+mongoStreamFilesSuffix,
-        BSON([mongoStreamIDField,li.SubItems[siID]]));
+        JSON([mongoStreamIDField,li.SubItems[siID]]));
       FDB.Delete(FilesCollection+mongoStreamChunksSuffix,
-        BSON([mongoStreamFilesIDField,li.SubItems[siID]]));
+        JSON([mongoStreamFilesIDField,li.SubItems[siID]]));
       li.Delete;
      end;
 end;

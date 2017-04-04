@@ -1,91 +1,43 @@
 # Delphi MongoDB Driver
 
 A Delphi driver to access a mongoDB server.
-It maps variables onto Delphi variables of type OleVariant, which resembles
+It uses [jsonDoc.pas](https://github.com/stijnsanders/jsonDoc#jsondoc) to store JSON documents. `IJSONDocument`  maps variables onto Delphi variables of type Variant, which resembles
 the loose typing of JavaScript.
-There are two main units and three main classes to enable access to a mongo DB
-server:
+There are three main units and two main classes to enable access to a mongo DB server:
 
-## bsonDoc.pas
+## jsonDoc.pas
 
-    TBSONDocument = class(TInterfacedObject, IBSONDocument, IPersistStream)
+Declares `IJSONDocument` and related interfaces, and the `JSON` function to create instances, optionally populated with data. `IJSONDocument` instances hold the data of a 'document', the basic unit of data mongoDB works with.
+A variable of type Variant can hold an interface reference to an instance, which enables embedding documents.
+Use Variant arrays (or `IJSONArray`) to store arrays of values in a document.
 
-Holds the data of a 'document', the basic unit of data mongoDB works with.
-Implements an IBSONDocument interface which allows it to be referenced by
-an Variant variable, which enables embedding documents.
-Implements the IPersistStream interface to enable loading from and saving
-to BSON, the internal binary storage specification used by mongoDB.
+See also https://github.com/stijnsanders/jsonDoc#jsondoc
 
-    function BSON: IBSONDocument; overload;
-    function BSON(x: array of OleVariant): IBSONDocument; overload;
+## bsonTools.pas
 
-Creates a BSON document object ready for use.
-Optionally pass a sequence of key-value pairs,
-e.g.: BSON(['x',5,'y',7]);
-Use '[' and ']' to created embedded documents,
-e.g.: BSON(['x','[','$gt',7,']']);
-Use VarArrayOf or 1-dimensional variant arrays to add arrays,
-e.g.: BSON(['x',VarArrayOf([1,2,3])]);
+Declares the `LoadBSON` and `SaveBSON` procedures.
 
-    function BSONenum: IBSONDocumentEnumerator;
-See below
+Also declares the `IBSONDocArray` interface which can improve processing arrays of embedded documents by keeping a reference to the underlying data stream, and only loading one document at a time, possibly re-using allocated memory for the same keys if the documents have a similar structure.
+**Attention:** take care to keep the TStream instance in existance for as long as you're planning to use the linked `IBSONDocArray` instance. Failure to do so can lead to _privileged instruction_ or _access violation_ errors.
 
 ## mongoWire.pas
-    TMongoWire=class(TObject)
-A connection to a mongoDB server. Supports getting single items, performing inserts, updates and deletes.
 
-    TMongoWireQuery=class(TBSONDocumentsEnumerator)
-A query to a mongoDB server, handles the cursor and subsequent requests to the server to get more data when needed.
+Use an object of class `TMongoWire` to connection to a mongoDB server. It supports getting single items, performing inserts, updates and deletes.
 
-* http://yoy.be/TMongoWire
-* https://github.com/stijnsanders/TMongoWire
+Use objects of class `TMongoWireQuery` to query to a mongoDB server. It handles the cursor and subsequent requests to the server to get more data when needed.
 
+## mongoID.pas
 
-# Additional tools
+Use function `mongoObjectId` to construct a new MongoDB-style id value.
 
-## bsonUtils.pas
+## mongoAuth3.pas
 
-    function BsonToJson(Doc: IBSONDocument): WideString;
+Use procedure `MongoWireAuthenticate` to authenticate a newly connected `TMongoWire` instance. As of version 3.0 MongoDB uses a slightly modified `SCRAM-SHA-1` to vastly improve security with access control. (Use `mongoAuth.pas` for MongoDB versions prior to 3.0.)
 
-Converts a BSON document into a JSON string.
+## mongoStream.pas
 
-    function JsonToBson(jsonData: WideString): IBSONDocument;
+Use `TMongoStream` to load and store files in MongoDB. Internally `.files` and `.chunks` collections are used to store the data.
 
-Converts a JSON string into a BSON document.
+## examples
 
-    procedure JsonIntoBson(jsonData: WideString; doc: IBSONDocument); overload;
-
-Parses a JSON string and adds any keys to an existing BSON document, overwriting the value if a key already exists.
-
-    procedure JsonIntoBson(jsonData: WideString; doc: IBSONDocument; var EndIndex:integer); overload;
-
-Parses only the first JSON object from a string into an existing BSON document, and returns the index into the string where the JSON object ends. Use this method to iterate over a list of JSON strings. (See also IBSONDocument.Clear)
-
-BSON document enumerator
-------------------------
-
-In scenario's where you have BSON documents that contain one or more arrays of
-other BSON documents, parsing the data into the total number of BSON document
-instances required, may take a lot of memory and have an impact on performance.
-This is in disaccord with the fact that most probably the children documents
-get processed one by one.
-
-To improve this scenario, you can use IBSONDocumentEnumerator. The Load method
-of the default IBSONDocument implementation detects if an
-IBSONDocumentEnumerator instance is present when it is about to parse an
-embedded document in an array. If there is, the IBSONDocumentEnumerator
-instance is loaded with an extra reference to the storage stream and the
-stream positions of the documents in the array, but the internal
-structure is not parsed yet. (Attention: since the enumerator keeps a
-reference to the storage stream, its lifetime may get extended past the
-original IPersistStream.Load call.)
-
-By using the enumerator's Next method on a single IBSONDocument instance, only
-one document at a time is parsed. Since the default IBSONDocument
-implementation keeps the current set of keys and children documents, no time
-is wasted releasing and re-allocating memory for (almost) the same structure
-of data.
-
-**Attention:** IBSONDocumentEnumerator doesn't support updates (yet?). It's
-available read-only, but doesn't enforce this. Modifications to the document
-used with Next don't get updated.
+See the example projects for straight-forward demonstration applications that use TMongoWire.

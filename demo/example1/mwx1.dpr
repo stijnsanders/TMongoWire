@@ -5,8 +5,9 @@ uses
   mwx1Main in 'mwx1Main.pas' {MainForm},
   mwx1Con in 'mwx1Con.pas' {ConnectionForm},
   simpleSock in '..\..\simpleSock.pas',
+  jsonDoc in '..\..\jsonDoc.pas',
+  bsonTools in '..\..\bsonTools.pas',
   mongoWire in '..\..\mongoWire.pas',
-  bsonDoc in '..\..\bsonDoc.pas',
   mwx1Item in 'mwx1Item.pas' {ItemForm},
   mongoID in '..\..\mongoID.pas';
 
