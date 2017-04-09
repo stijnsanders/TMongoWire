@@ -733,7 +733,7 @@ var
     IID_IStream:TGUID='{0000000C-0000-0000-C000-000000000046}';
   var
     i:integer;
-    p1,p2:int64;
+    p1,p2:{$IFDEF VER130}UInt64{$ELSE}Int64{$ENDIF};
     ss:IStream;
     d:array[0..dSize-1] of byte;
   begin
