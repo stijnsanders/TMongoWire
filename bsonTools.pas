@@ -289,7 +289,8 @@ var
   aa:TJSONArray;
   v:Variant;
   j:integer;
-  o:array[0..15] of byte;
+
+  o:array[0..15] of byte;
   ii:int64 absolute o;
   dd:double absolute o;
   pp:pointer absolute o;
@@ -485,7 +486,7 @@ begin
        end;
       bsonJavaScriptCode:
        begin
-        v:=bsonJavaScriptCodePrefix+dReadString;//TODO: find active script interface?µ
+        v:=bsonJavaScriptCodePrefix+dReadString;//TODO: find active script interface?Âµ
         SetValue(v);
        end;
       bsonSymbol:
@@ -650,7 +651,8 @@ var
     p:integer;//int64?
     IsArray:boolean;
   end;
-  stackIndex,stackLength:integer;
+
+  stackIndex,stackLength:integer;
 
   procedure Push(const NewEnum:IJSONEnumerator; NewIsArray:boolean);
   var
@@ -733,7 +735,7 @@ var
     IID_IStream:TGUID='{0000000C-0000-0000-C000-000000000046}';
   var
     i:integer;
-    p1,p2:{$IFDEF VER130}UInt64{$ELSE}Int64{$ENDIF};
+    p1,p2:{$IFDEF VER310}UInt64{$ELSE}Int64{$ENDIF};
     ss:IStream;
     d:array[0..dSize-1] of byte;
   begin
