@@ -869,7 +869,7 @@ begin
             ii:=Round((VarToDateTime(v^)-UnixDateDelta)*MSecsPerDay);
             dWrite(@ii,8);
            end;
-          varOleStr,varString:
+          varOleStr,varString,$0102:
            begin
             //detect GUID //TODO try to rig varStrArg
             w:=VarToWideStr(v^);
