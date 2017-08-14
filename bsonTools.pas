@@ -316,6 +316,8 @@ begin
   d0:=0;
   IsArray:=false;
   d:=Doc;
+  sl:=0;
+  ss:='';
   while (ltotal<ltmax) and (stackIndex<>-1) do
    begin
     i:=0;
