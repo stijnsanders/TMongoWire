@@ -64,7 +64,8 @@ procedure TMainForm.FormShow(Sender: TObject);
 begin
   try
     if ConnectionForm.ShowModal=mrOk then
-      FMongoWire.Open(ConnectionForm.txtHost.Text,StrToInt(ConnectionForm.txtPort.Text))
+      FMongoWire.Open(AnsiString(ConnectionForm.txtHost.Text),
+        StrToInt(ConnectionForm.txtPort.Text))
     else
 
       raise Exception.Create('User abort');

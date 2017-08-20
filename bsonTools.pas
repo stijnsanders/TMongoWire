@@ -51,7 +51,9 @@ type
     function Get_Item(Index: integer): Variant; stdcall;
     procedure Set_Item(Index: integer; const Value: Variant); stdcall;
     function Count: integer; stdcall;
-    function ToString: WideString; stdcall;
+    function JSONToString: WideString; stdcall;
+    function IJSONArray.ToString=JSONToString;
+    function IJSONDocArray.ToString=JSONToString;
     function v0(Index: integer): pointer; stdcall;
     property Item[Idx: integer]: Variant read Get_Item write Set_Item; default;
     //IJSONDocArray
@@ -316,6 +318,8 @@ begin
   d0:=0;
   IsArray:=false;
   d:=Doc;
+  sl:=0;
+  ss:='';
   while (ltotal<ltmax) and (stackIndex<>-1) do
    begin
     i:=0;
@@ -815,6 +819,8 @@ var
   pp:pointer absolute o;
   bb:byte;
 begin
+  stackIndex:=0;
+  stackLength:=0;
   lstart:=Data.Position;//may not be 0!
   ltotal:=0;
   i:=0;//write now, fill in later
@@ -1109,7 +1115,7 @@ begin
   FRef[Index]:=p;
 end;
 
-function TBSONDocArray.ToString: WideString;
+function TBSONDocArray.JSONToString: WideString;
 var
   i:integer;
   d:IJSONDocument;
