@@ -6,7 +6,7 @@ Copyright 2010-2017 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
-v1.1.0
+v1.2.0
 
 }
 unit mongoWire;
@@ -40,6 +40,8 @@ type
     destructor Destroy; override;
 
     procedure Open(const ServerName: string = 'localhost';
+      Port: integer = 27017);
+    procedure OpenSecure(const ServerName: string = 'localhost';
       Port: integer = 27017);
     procedure Close;
 
@@ -171,7 +173,7 @@ constructor TMongoWire.Create(const NameSpace: WideString);
 begin
   inherited Create;
   FNameSpace:=NameSpace;
-  FSocket:=TTcpSocket.Create;
+  FSocket:=nil;
   FData:=TMemoryStream.Create;
   FData.Size:=MongoWireStartDataSize;//start keeping some data
   FWriteLock:=TCriticalSection.Create;
@@ -182,7 +184,7 @@ end;
 
 destructor TMongoWire.Destroy;
 begin
-  FSocket.Free;
+  if FSocket<>nil then FSocket.Free;
   FData.Free;
   FWriteLock.Free;
   FReadLock.Free;
@@ -191,22 +193,37 @@ begin
 end;
 
 procedure TMongoWire.Open(const ServerName: string; Port: integer);
-var
-  i,l:integer;
 begin
-  FSocket.Disconnect;
+  if FSocket<>nil then
+   begin
+    FSocket.Disconnect;
+    FSocket.Free;
+   end;
+  FSocket:=TTcpSocket.Create;
   FSocket.Connect(ServerName,Port);
   if not FSocket.Connected then
     raise EMongoConnectFailed.Create(
       'MongoWire: failed to connect to "'+ServerName+':'+IntToStr(Port)+'"');
-  i:=1;
-  l:=4;
-  setsockopt(FSocket.Handle,IPPROTO_TCP,TCP_NODELAY,@i,l);
+end;
+
+procedure TMongoWire.OpenSecure(const ServerName: string; Port: integer);
+begin
+  if FSocket<>nil then
+   begin
+    FSocket.Disconnect;
+    FSocket.Free;
+   end;
+  FSocket:=TTcpSecureSocket.Create;
+  FSocket.Connect(ServerName,Port);
+  if not FSocket.Connected then
+    raise EMongoConnectFailed.Create(
+      'MongoWire: failed to connect to "'+ServerName+':'+IntToStr(Port)+'"');
 end;
 
 procedure TMongoWire.Close;
 begin
-  FSocket.Disconnect;
+  if FSocket<>nil then
+    FSocket.Disconnect;
 end;
 
 procedure TMongoWire.DataCString(const x:WideString);
@@ -227,7 +244,7 @@ var
   p:PMongoWireMsgHeader;
 begin
   //assert caller did FQueueLock !!!
-  if not FSocket.Connected then
+  if (FSocket=nil) or not(FSocket.Connected) then
     raise EMongoNotConnected.Create('MongoWire: not connected');
   //message header
   p:=FData.Memory;
