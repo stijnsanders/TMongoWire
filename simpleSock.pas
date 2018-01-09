@@ -304,7 +304,7 @@ begin
   addr.port:=htons(port);
   for i:=0 to 11 do addr.data[i]:=0;
   if host<>'' then
-    if char(host[1]) in ['0'..'9'] then
+    if AnsiChar(host[1]) in ['0'..'9'] then
       PCardinal(@addr.data[0])^:=inet_addr(PAnsiChar(host))
     else
      begin
@@ -374,7 +374,7 @@ end;
 
 function TTcpSocket.GetAddress: string;
 begin
-  Result:=inet_ntoa(PCardinal(@FAddr.data[0])^);
+  Result:=string(inet_ntoa(PCardinal(@FAddr.data[0])^));
 end;
 
 function TTcpSocket.GetHostName: string;
@@ -399,9 +399,9 @@ begin
        end;
      end
     else
-      Result:=inet_ntoa(PCardinal(@FAddr.data[0])^)
+      Result:=string(inet_ntoa(PCardinal(@FAddr.data[0])^))
   else
-    Result:=e.h_name;
+    Result:=string(e.h_name);
 end;
 
 function TTcpSocket.ReceiveBuf(var Buf; Count: Integer): Integer;
@@ -515,12 +515,18 @@ const
 function AcquireCredentialsHandle; external SecurityDLL name 'AcquireCredentialsHandleA';
 function FreeCredentialsHandle; external SecurityDLL name 'FreeCredentialsHandle';
 function InitializeSecurityContext; external SecurityDLL name 'InitializeSecurityContextA';
-function DeleteSecurityContext; external SecurityDLL name 'DeleteSecurityContext';
-function ApplyControlToken; external SecurityDLL name 'ApplyControlToken';
-function QueryContextAttributes; external SecurityDLL name 'QueryContextAttributesA';
-function FreeContextBuffer; external SecurityDLL name 'FreeContextBuffer';
-function EncryptMessage; external SecurityDLL name 'EncryptMessage';
-function DecryptMessage; external SecurityDLL name 'DecryptMessage';
+
+function DeleteSecurityContext; external SecurityDLL name 'DeleteSecurityContext';
+
+function ApplyControlToken; external SecurityDLL name 'ApplyControlToken';
+
+function QueryContextAttributes; external SecurityDLL name 'QueryContextAttributesA';
+
+function FreeContextBuffer; external SecurityDLL name 'FreeContextBuffer';
+
+function EncryptMessage; external SecurityDLL name 'EncryptMessage';
+
+function DecryptMessage; external SecurityDLL name 'DecryptMessage';
 
 { TTcpSecureSocket }
 
