@@ -2,11 +2,11 @@
 
 TMongoWire: mongoWire.pas
 
-Copyright 2010-2017 Stijn Sanders
+Copyright 2010-2018 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
-v1.2.0
+v1.2.1
 
 }
 unit mongoWire;
@@ -39,9 +39,9 @@ type
     constructor Create(const NameSpace: Widestring);
     destructor Destroy; override;
 
-    procedure Open(const ServerName: string = 'localhost';
+    procedure Open(const ServerName: AnsiString = 'localhost';
       Port: integer = 27017);
-    procedure OpenSecure(const ServerName: string = 'localhost';
+    procedure OpenSecure(const ServerName: AnsiString = 'localhost';
       Port: integer = 27017);
     procedure Close;
 
@@ -192,7 +192,7 @@ begin
   inherited;
 end;
 
-procedure TMongoWire.Open(const ServerName: string; Port: integer);
+procedure TMongoWire.Open(const ServerName: AnsiString; Port: integer);
 begin
   if FSocket<>nil then
    begin
@@ -203,10 +203,10 @@ begin
   FSocket.Connect(ServerName,Port);
   if not FSocket.Connected then
     raise EMongoConnectFailed.Create(
-      'MongoWire: failed to connect to "'+ServerName+':'+IntToStr(Port)+'"');
+      'MongoWire: failed to connect to "'+string(ServerName)+':'+IntToStr(Port)+'"');
 end;
 
-procedure TMongoWire.OpenSecure(const ServerName: string; Port: integer);
+procedure TMongoWire.OpenSecure(const ServerName: AnsiString; Port: integer);
 begin
   if FSocket<>nil then
    begin
@@ -217,7 +217,7 @@ begin
   FSocket.Connect(ServerName,Port);
   if not FSocket.Connected then
     raise EMongoConnectFailed.Create(
-      'MongoWire: failed to connect to "'+ServerName+':'+IntToStr(Port)+'"');
+      'MongoWire: failed to connect to "'+string(ServerName)+':'+IntToStr(Port)+'"');
 end;
 
 procedure TMongoWire.Close;
