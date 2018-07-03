@@ -53,6 +53,16 @@ const
   TCP_NODELAY = 1;
 
 type
+  TCredHandle=record
+    dwLower:pointer;
+    dwUpper:pointer;
+  end;
+  PCredHandle=^TCredHandle;
+
+  TCtxtHandle=type TCredHandle;
+  PCtxtHandle=^TCtxtHandle;
+
+type
   TTcpSocket=class(TObject)
   private
     FSocket:THandle;
@@ -118,15 +128,6 @@ function closesocket(s: THandle): integer; stdcall;
 //function __WSAFDIsSet(s: THandle; var FDSet: TFDSet): Boolean; stdcall;
 
 type
-  TCredHandle=record
-    dwLower:pointer;
-    dwUpper:pointer;
-  end;
-  PCredHandle=^TCredHandle;
-
-  TCtxtHandle=type TCredHandle;
-  PCtxtHandle=^TCtxtHandle;
-
   TSChannelCred=record
     dwVersion: cardinal;
     cCreds: cardinal;
@@ -173,7 +174,6 @@ type
     cbBlockSize: cardinal;
   end;
   PSecPkgContextStreamSizes=^TSecPkgContextStreamSizes;
-
   
 function AcquireCredentialsHandle(pszPrincipal: PAnsiChar;
     pszPackage: PAnsiChar; fCredentialUse: cardinal; pvLogonID: PInt64;
@@ -333,6 +333,10 @@ begin
   FConnected:=false;
   FillChar(FAddr,SizeOf(TSocketAddress),#0);
   FAddr.family:=family;//AF_INET
+  FCred.dwLower:=nil;
+  FCred.dwUpper:=nil;
+  FCtxt.dwLower:=nil;
+  FCtxt.dwUpper:=nil;
   FSocket:=socket(family,SOCK_STREAM,IPPROTO_IP);
   if FSocket=INVALID_SOCKET then RaiseLastWSAError;
 end;
@@ -515,17 +519,12 @@ const
 function AcquireCredentialsHandle; external SecurityDLL name 'AcquireCredentialsHandleA';
 function FreeCredentialsHandle; external SecurityDLL name 'FreeCredentialsHandle';
 function InitializeSecurityContext; external SecurityDLL name 'InitializeSecurityContextA';
-
+function AcceptSecurityContext; external SecurityDLL name 'AcceptSecurityContext';
 function DeleteSecurityContext; external SecurityDLL name 'DeleteSecurityContext';
-
 function ApplyControlToken; external SecurityDLL name 'ApplyControlToken';
-
 function QueryContextAttributes; external SecurityDLL name 'QueryContextAttributesA';
-
 function FreeContextBuffer; external SecurityDLL name 'FreeContextBuffer';
-
 function EncryptMessage; external SecurityDLL name 'EncryptMessage';
-
 function DecryptMessage; external SecurityDLL name 'DecryptMessage';
 
 { TTcpSecureSocket }

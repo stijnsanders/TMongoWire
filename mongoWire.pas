@@ -6,7 +6,7 @@ Copyright 2010-2018 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
-v1.2.1
+v1.2.2
 
 }
 unit mongoWire;
@@ -51,35 +51,35 @@ type
       const ReturnFieldSelector: IJSONDocument = nil
     ): IJSONDocument;
     //Query: see TMongoWireQuery.Create
-    procedure Update(
+    function Update(
       const Collection: WideString;
       const Selector, Doc: IJSONDocument;
       Upsert: boolean = false;
       MultiUpdate: boolean = false
-    );
-    procedure Insert(
+    ): IJSONDocument;
+    function Insert(
       const Collection: WideString;
       const Doc: IJSONDocument
-    ); overload;
-    procedure Insert(
+    ): IJSONDocument; overload;
+    function Insert(
       const Collection: WideString;
       const Docs: array of IJSONDocument
-    ); overload;
+    ): IJSONDocument; overload;
     procedure Insert(
       const Collection: WideString;
       const Docs: IJSONDocArray
     ); overload;
-    procedure Delete(
+    function Delete(
       const Collection: WideString;
       const Selector: IJSONDocument;
       SingleRemove: boolean = false
-    );
+    ): IJSONDocument;
     function Ping: Boolean;
-    procedure EnsureIndex(
+    function EnsureIndex(
       const Collection: WideString;
       const Index: IJSONDocument;
       const Options: IJSONDocument = nil
-    );
+    ): IJSONDocument;
 
     function RunCommand(
       const CmdObj: IJSONDocument
@@ -428,8 +428,8 @@ begin
   end;
 end;
 
-procedure TMongoWire.Update(const Collection: WideString; const Selector,
-  Doc: IJSONDocument; Upsert, MultiUpdate: boolean);
+function TMongoWire.Update(const Collection: WideString; const Selector,
+  Doc: IJSONDocument; Upsert, MultiUpdate: boolean): IJSONDocument;
 var
   d:IJSONDocument;
 begin
@@ -441,27 +441,27 @@ begin
     ]);
   if Upsert then d['upsert']:=true;
   if MultiUpdate then d['multi']:=true;
-  RunCommand(JSON(
+  Result:=RunCommand(JSON(
     ['update',Collection
     ,'updates',ja([d])
     ,'writeConcern',FWriteConcern
     ]));
 end;
 
-procedure TMongoWire.Insert(const Collection: WideString;
-  const Doc: IJSONDocument);
+function TMongoWire.Insert(const Collection: WideString;
+  const Doc: IJSONDocument): IJSONDocument;
 begin
   if Doc=nil then
     raise EMongoException.Create('MongoWire.Insert: Doc required');
-  RunCommand(JSON(
+  Result:=RunCommand(JSON(
     ['insert',Collection
     ,'documents',ja([Doc])
     ,'writeConcern',FWriteConcern
     ]));
 end;
 
-procedure TMongoWire.Insert(const Collection: WideString;
-  const Docs: array of IJSONDocument);
+function TMongoWire.Insert(const Collection: WideString;
+  const Docs: array of IJSONDocument): IJSONDocument;
 var
   i,l:integer;
   v:Variant;
@@ -469,7 +469,7 @@ begin
   l:=Length(Docs);
   v:=VarArrayCreate([0,l-1],varUnknown);
   for i:=0 to l-1 do v[i]:=Docs[i];
-  RunCommand(JSON(
+  Result:=RunCommand(JSON(
     ['insert',Collection
     ,'documents',v
     ,'writeConcern',FWriteConcern
@@ -495,13 +495,13 @@ begin
    end;
 end;
 
-procedure TMongoWire.Delete(const Collection: WideString;
-  const Selector: IJSONDocument; SingleRemove: boolean);
+function TMongoWire.Delete(const Collection: WideString;
+  const Selector: IJSONDocument; SingleRemove: boolean): IJSONDocument;
 var
   l:integer;
 begin
   if SingleRemove then l:=1 else l:=0;
-  RunCommand(JSON(
+  Result:=RunCommand(JSON(
     ['delete',Collection
     ,'deletes',ja([JSON(
       ['q',Selector
@@ -525,8 +525,8 @@ begin
   FNameSpace:=ns;
 end;
 
-procedure TMongoWire.EnsureIndex(const Collection: WideString;
-  const Index, Options: IJSONDocument);
+function TMongoWire.EnsureIndex(const Collection: WideString;
+  const Index, Options: IJSONDocument): IJSONDocument;
 var
   Document: IJSONDocument;
   Name: String;
@@ -564,7 +564,7 @@ begin
       Document['v'] := Options['v'];
   end;
 
-  Insert(mongoWire_Db_SystemIndexCollection, Document);
+  Result:=Insert(mongoWire_Db_SystemIndexCollection, Document);
 end;
 
 function TMongoWire.RunCommand(const CmdObj: IJSONDocument): IJSONDocument;
