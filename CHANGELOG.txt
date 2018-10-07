@@ -1,3 +1,9 @@
+v1.2.2
+- modified Insert/Update/Delete to function():IJSONDocument
+v1.2.1
+- Open ServerName:AnsiString
+v1.2.0
+- TLS support using Windows' SSPI SChannel
 v1.0.1
 - fixed int64 issue over Delphi versions
 v1.0.0

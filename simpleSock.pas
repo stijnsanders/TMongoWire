@@ -333,10 +333,6 @@ begin
   FConnected:=false;
   FillChar(FAddr,SizeOf(TSocketAddress),#0);
   FAddr.family:=family;//AF_INET
-  FCred.dwLower:=nil;
-  FCred.dwUpper:=nil;
-  FCtxt.dwLower:=nil;
-  FCtxt.dwUpper:=nil;
   FSocket:=socket(family,SOCK_STREAM,IPPROTO_IP);
   if FSocket=INVALID_SOCKET then RaiseLastWSAError;
 end;
@@ -519,7 +515,6 @@ const
 function AcquireCredentialsHandle; external SecurityDLL name 'AcquireCredentialsHandleA';
 function FreeCredentialsHandle; external SecurityDLL name 'FreeCredentialsHandle';
 function InitializeSecurityContext; external SecurityDLL name 'InitializeSecurityContextA';
-function AcceptSecurityContext; external SecurityDLL name 'AcceptSecurityContext';
 function DeleteSecurityContext; external SecurityDLL name 'DeleteSecurityContext';
 function ApplyControlToken; external SecurityDLL name 'ApplyControlToken';
 function QueryContextAttributes; external SecurityDLL name 'QueryContextAttributesA';
@@ -882,7 +877,7 @@ begin
 end;
 
 initialization
-  WSAStartup($0101,@WSAData);
+  WSAStartup($0202,@WSAData);
 finalization
   WSACleanup;
 end.
