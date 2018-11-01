@@ -2,11 +2,11 @@
 
 TMongoWire: bsonTools.pas
 
-Copyright 2010-2017 Stijn Sanders
+Copyright 2010-2018 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/TMongoWire
 
-v1.1.0
+v1.1.1
 
 }
 unit bsonTools;
@@ -61,6 +61,7 @@ type
     function AddJson(const Data: WideString): integer; stdcall;
     procedure LoadItem(Index: integer; const Doc: IJSONDocument); stdcall;
     procedure Clear; stdcall;
+    function GetJSON(Index: integer): WideString; stdcall;
     //IBSONDocArray
     procedure ReadAll(Data: TStream); stdcall;
     procedure WriteAll(Data: TStream); stdcall;
@@ -1101,6 +1102,18 @@ begin
     raise ERangeError.Create('Out of range');
   FData.Position:=FRef[Index];
   LoadBSON(FData,Doc);
+end;
+
+function TBSONDocArray.GetJSON(Index: integer): WideString;
+var
+  Doc:IJSONDocument;
+begin
+  if (Index<0) or (Index>=FRefIndex) then
+    raise ERangeError.Create('Out of range');
+  FData.Position:=FRef[Index];
+  Doc:=JSON;
+  LoadBSON(FData,Doc);
+  Result:=Doc.ToString;
 end;
 
 procedure TBSONDocArray.Set_Item(Index: integer; const Value: Variant);
