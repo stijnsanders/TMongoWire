@@ -2,11 +2,11 @@
 
 jsonDoc.pas
 
-Copyright 2015-2018 Stijn Sanders
+Copyright 2015-2019 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/jsonDoc
 
-v1.1.8
+v1.2.0
 
 }
 unit jsonDoc;
@@ -28,6 +28,9 @@ Define here or in the project settings
 
   JSONDOC_JSON_PASCAL_STRINGS
     to allow pascal-style strings
+
+  JSONDOC_P2
+    to combine JSONDOC_JSON_LOOSE and JSONDOC_JSON_PASCAL_STRINGS
 
   JSONDOC_STOREINDENTING
     to make ToString write indentation EOL's and tabs
@@ -66,8 +69,8 @@ type
   IJSONDocument interface
   the base JSON document interface that provides access to a set of
   key-value pairs.
-  use ToString and Parse to convert JSON to and from string values.
-  use ToVarArray to access the key-value pairs as a [x,2] variant array.
+  use AsString and Parse to convert JSON to and from string values.
+  use AsVarArray to access the key-value pairs as a [x,2] variant array.
   use Clear to re-use a JSON doc for parsing or building a new similar
   document and keep the allocated memory for keys and values.
   see also: JSON function
@@ -76,13 +79,14 @@ type
     ['{4A534F4E-0001-0001-C000-000000000001}']
     function Get_Item(const Key: WideString): Variant; stdcall;
     procedure Set_Item(const Key: WideString; const Value: Variant); stdcall;
-    function Parse(const JSONData: WideString): IJSONDocument; stdcall;
+    procedure Parse(const JSONData: WideString); stdcall;
     function ToString: WideString; stdcall;
     function ToVarArray: Variant; stdcall;
     procedure Clear; stdcall;
+    procedure Delete(const Key: WideString); stdcall;
     property Item[const Key: WideString]: Variant
       read Get_Item write Set_Item; default;
-    procedure Delete(const Key: WideString); stdcall;
+    property AsString: WideString read ToString write Parse;
   end;
 
 {
@@ -276,7 +280,7 @@ type
   public
     procedure AfterConstruction; override;
     destructor Destroy; override;
-    function Parse(const JSONData: WideString): IJSONDocument; stdcall;
+    procedure Parse(const JSONData: WideString); stdcall;
     function JSONToString: WideString; stdcall;
     function IJSONDocument.ToString=JSONToString;
     function ToVarArray: Variant; stdcall;
@@ -285,6 +289,7 @@ type
     procedure Delete(const Key: WideString); stdcall;
     property Item[const Key: WideString]: Variant
       read Get_Item write Set_Item; default;
+    property AsString: WideString read JSONToString write Parse;
     property UseIJSONArray:boolean read FUseIJSONArray write FUseIJSONArray;
   end;
 
@@ -652,7 +657,12 @@ begin
   {$ENDIF}
 end;
 
-function TJSONDocument.Parse(const JSONData: WideString): IJSONDocument;
+{$IFDEF JSONDOC_P2}
+{$DEFINE JSONDOC_JSON_LOOSE}
+{$DEFINE JSONDOC_JSON_PASCAL_STRINGS}
+{$ENDIF}
+
+procedure TJSONDocument.Parse(const JSONData: WideString);
 var
   i,l:integer;
   function SkipWhiteSpace:WideChar;
@@ -1072,7 +1082,7 @@ begin
                 (jsonData[i]=':') or (jsonData[i]='"')
                 {$IFDEF JSONDOC_JSON_LOOSE}
                 or (jsonData[i]='{') or (jsonData[i]='[')
-                or (jsonData[i]='=')
+                or (jsonData[i]='=') or (jsonData[i]=';')
                 {$ENDIF}
                 ) do inc(i);
               k2:=i;
@@ -1276,6 +1286,7 @@ begin
            end;
 
           {$IFDEF JSONDOC_JSON_LOOSE}
+          ';':inc(i);
           else
            begin
             v1:=i;
@@ -1445,7 +1456,6 @@ begin
     LeaveCriticalSection(FLock);
   end;
   {$ENDIF}
-  Result:=Self;
 end;
 
 function JSONEncodeStr(const xx:WideString):WideString;
