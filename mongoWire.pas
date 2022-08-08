@@ -341,8 +341,14 @@ begin
           // TODO: check checksum
 
           //set position after message header
-          //case h.OpCode of OP_MSG:?
-          dx.Position:=21;
+          //case h.OpCode of OP_MSG:? //TODO
+          dx.Position:=20;
+          i:=0;
+          dx.Read(i,1);
+          //case i? //TODO
+          if i<>0 then
+            raise EMongoException.Create('//TODO: support msg kind '+Format('%.2x',[i]));
+
          end;
       until h.ResponseTo=r;
       //request is in!
