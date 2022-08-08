@@ -475,11 +475,12 @@ begin
     VarArrayUnlock(v);
   end;
 
-  b:=MongoWire.Get('$cmd',JSON([
-    'saslStart',1,
-    'mechanism','SCRAM-SHA-1',//TODO: full-fledged SASL
-    'payload',v
-  ]));
+  b:=MongoWire.Msg(JSON(
+    ['saslStart',1
+    ,'mechanism','SCRAM-SHA-1' //TODO: full-fledged SASL
+    ,'payload',v
+    ,'$db','admin'
+    ]),nil);
   if VarIsNull(b['conversationId']) then
     raise EMongoAuthenticationFailed.CreateFmt(ErrMsg,[UserName]);
   //assert b['done']=false
@@ -555,11 +556,12 @@ begin
     VarArrayUnlock(v);
   end;
 
-  b:=MongoWire.Get('$cmd',JSON([
-    'saslContinue',1,
-    'payload',v,
-    'conversationId',b['conversationId']
-  ]));
+  b:=MongoWire.Msg(JSON(
+    ['saslContinue',1
+    ,'payload',v
+    ,'conversationId',b['conversationId']
+    ,'$db','admin'
+    ]),nil);
 
   if VarIsNull(b['conversationId']) then
     raise EMongoAuthenticationFailed.CreateFmt(ErrMsg,[UserName]);
@@ -581,11 +583,12 @@ begin
 
   if b['done']<>true then
    begin
-    b:=MongoWire.Get('$cmd',JSON([
-      'saslContinue',1,
-      'payload',VarArrayCreate([0,-1],varByte),
-      'conversationId',b['conversationId']
-    ]));
+    b:=MongoWire.Msg(JSON(
+      ['saslContinue',1
+      ,'payload',VarArrayCreate([0,-1],varByte)
+      ,'conversationId',b['conversationId']
+      ,'$db','admin'
+      ]),nil);
     //assert b['ok']=1
     //assert b['done']=true
     //assert b['payload'] is an empty byte vararray
@@ -594,7 +597,7 @@ end;
 
 procedure MongoWireLogout(MongoWire: TMongoWire);
 begin
-  if MongoWire.Get('admin.$cmd',JSON(['logout',1]))['ok']<>1 then
+  if MongoWire.Msg(JSON(['logout',1,'$db','admin']),nil)['ok']<>1 then
     raise EMongoException.Create('MongoWire: logout failed');
 end;
 

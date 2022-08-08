@@ -50,7 +50,7 @@ type
     //IJSONArray
     function Get_Item(Index: integer): Variant; stdcall;
     procedure Set_Item(Index: integer; const Value: Variant); stdcall;
-    function Count: integer; stdcall;
+    function ItemsCount: integer; stdcall;
     function JSONToString: WideString; stdcall;
     function IJSONArray.ToString=JSONToString;
     function IJSONDocArray.ToString=JSONToString;
@@ -112,12 +112,15 @@ const
   bsonMaxKey = $0000007F;
 
   //bsonBinarySubType
-  bsonBinaryGeneric = $00000000;
-  bsonBinaryFunction = $00000001;
-  bsonBinaryOldBinary = $00000002;
-  bsonBinaryUUID = $00000003;
-  bsonBinaryMD5 = $00000005;
-  bsonBinaryUserDefined = $00000006;
+  bsonBinaryGeneric = $00;
+  bsonBinaryFunction = $01;
+  bsonBinaryBinary_old = $02;
+  bsonBinaryUUID_old = $03;
+  bsonBinaryUUID = $04;
+  bsonBinaryMD5 = $05;
+  bsonBinaryEncryptedBSON = $06;
+  bsonBinaryCompressedBSONColumn = $07;
+  bsonBinaryUserDefined = $80;
 
 {$IF not Declared(UTF8ToWideString)}
 function UTF8ToWideString(const s: UTF8String): WideString;
@@ -414,7 +417,7 @@ begin
         dRead(@o[11],1);
         //TODO: store value somewhere?
         case o[11] of
-          bsonBinaryGeneric,bsonBinaryOldBinary,bsonBinaryUserDefined:
+          bsonBinaryGeneric,bsonBinaryBinary_old,bsonBinaryUserDefined:
            begin
             v:=VarArrayCreate([BSONArrayBaseIndex,i-1+BSONArrayBaseIndex],varByte);
             pp:=VarArrayLock(v);
@@ -430,7 +433,7 @@ begin
             //TODO
             raise EInvalidOperation.Create('bsonBinaryFunction: Not Implemented');
            end;
-          bsonBinaryUUID:
+          bsonBinaryUUID_old,bsonBinaryUUID:
            begin
             if i<>16 then
               raise EBSONException.Create('Unexpected UUID length ('+
@@ -1078,7 +1081,7 @@ begin
   FRefIndex:=0;
 end;
 
-function TBSONDocArray.Count: integer;
+function TBSONDocArray.ItemsCount: integer;
 begin
   Result:=FRefIndex;
 end;

@@ -161,21 +161,22 @@ procedure MongoWireAuthenticate(MongoWire:TMongoWire;
 var
   nonce:WideString;
 begin
-  nonce:=MongoWire.Get('$cmd',JSON(['getnonce',1]))['nonce'];
-  if MongoWire.Get('$cmd',JSON([
-    'authenticate',1,
-    'nonce',nonce,
-    'user',UserName,
-    'key',MD5Hash(UTF8Encode(nonce+UserName+
+  nonce:=MongoWire.Msg(JSON(['getnonce',1,'$db','admin']),nil)['nonce'];
+  if MongoWire.Msg(JSON(
+    ['authenticate',1
+    ,'nonce',nonce
+    ,'user',UserName
+    ,'key',MD5Hash(UTF8Encode(nonce+UserName+
       MD5Hash(UTF8Encode(UserName+':mongo:'+Password))))
-  ]))['ok']<>1 then
+    ,'$db','admin'
+    ]),nil)['ok']<>1 then
     raise EMongoAuthenticationFailed.Create(
       'MongoWire: failed to authenticate as "'+UserName+'"');
 end;
 
 procedure MongoWireLogout(MongoWire:TMongoWire);
 begin
-  if MongoWire.Get('$cmd',JSON(['logout',1]))['ok']<>1 then
+  if MongoWire.Msg(JSON(['logout',1,'$db','admin']),nil)['ok']<>1 then
     raise EMongoException.Create('MongoWire: logout failed');
 end;
 
