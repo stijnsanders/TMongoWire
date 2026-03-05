@@ -18,7 +18,7 @@ See also https://github.com/stijnsanders/jsonDoc#jsondoc
 Declares the `LoadBSON` and `SaveBSON` procedures.
 
 Also declares the `IBSONDocArray` interface which can improve processing arrays of embedded documents by keeping a reference to the underlying data stream, and only loading one document at a time, possibly re-using allocated memory for the same keys if the documents have a similar structure.
-**Attention:** take care to keep the TStream instance in existance for as long as you're planning to use the linked `IBSONDocArray` instance. Failure to do so can lead to _privileged instruction_ or _access violation_ errors.
+**Attention:** take care to keep the TStream instance in existence for as long as you're planning to use the linked `IBSONDocArray` instance. Failure to do so can lead to _privileged instruction_ or _access violation_ errors.
 
 ## mongoWire.pas
 
